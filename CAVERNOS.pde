@@ -1,4 +1,5 @@
 import java.util.concurrent.Semaphore;
+import java.util.Arrays;
 static Semaphore semaphoreExample = new Semaphore(1);
 import ddf.minim.*;
 import ddf.minim.analysis.*;
@@ -15,6 +16,9 @@ void draw() {
   
 }
 
+//define an effects class should take an array and an area it can display in
+//decide wether to draw directly using the effect or have it output a pgraphics object
+
 public class AudioProcessor{
   //audio processing elements
   Minim minim;
@@ -28,7 +32,7 @@ public class AudioProcessor{
   int sampleRate = 44100;
   int specSize = 1024;
   int histDepth = 16;
-  float[][] spectrum;
+  float[][] magnitude;
   float[][][] history;
   
     /*
@@ -42,7 +46,7 @@ public class AudioProcessor{
   int[] bottomLimit =   {0,    80,    400,   1000,  4000,  10000};
   int[] topLimit =      {100,  500,   2000,  6000,  12000, 20000};
   
-  //figure out the appropriate ranges for different rffects to react to
+  //figure out the appropriate ranges for different effects to react to
   //frequency in Hz = i*sampleRate/SpecSize
   int mult = specSize/sampleRate;
   
@@ -60,8 +64,40 @@ public class AudioProcessor{
     lfft = new FFT(in.bufferSize(), in.sampleRate());
     println("buffer size is: %i", in.bufferSize());
     //spectrum is divided into left, mix, and right channels
-    spectrum = new float[3][specSize];
-    history = new float[histDepth][3][specSize];
+    magnitude = new float[3][specSize/2 -1];
+    history = new float[histDepth][3][specSize/2 -1];
+    
+    //okay to do this in main thread during creation but spawn multiple threads for streaming
+    float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
+                        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
+                        Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+                        
+    float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
+                        Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
+                        Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+                        
+    float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
+                        Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
+                        Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+                        
+    float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
+                          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
+                          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+                          
+    float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
+                         Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
+                         Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+                         
+    float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
+                            Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
+                            Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
+                        
+    sub = new Band(subArr,16);
+    low = new Band(lowArr,16);
+    mid = new Band(midArr,16);
+    upper = new Band(upperArr,16);
+    high = new Band(highArr,16);
+    bleeder = new Band(bleederArr,16); 
   }
   
   Thread logicThread = new Thread(new Runnable() {
@@ -70,33 +106,45 @@ public class AudioProcessor{
       rfft.forward(in.right);
       lfft.forward(in.left);
       
-      for (int i = 0; i < specSize; i++) {
-        float left_bin = max(0, lfft.getBand(i));
-        float right_bin = max(0, rfft.getBand(i));
-        float  mix_bin = max(0, (left_bin+right_bin)/2.0);
-        spectrum[0][i] = left_bin;
-        spectrum[1][i] = mix_bin;
-        spectrum[2][i] = right_bin;
+      for (int i = 0; i < specSize/2 -1; i++) {
+        float lr = lfft.getBand(2*i); //left real
+        float li = lfft.getBand(2*i+1); //left imaginary
+        float rr = lfft.getBand(2*i); //right real
+        float ri = lfft.getBand(2*i+1); //right imaginary
+        float left_bin = sqrt(lr*lr + li*li);
+        float right_bin = sqrt(rr*rr + ri*ri);
+        float  mix_bin = (left_bin+right_bin)/2.0;
+        magnitude[0][i] = left_bin;
+        magnitude[1][i] = mix_bin;
+        magnitude[2][i] = right_bin;
       }
     }});
 }
 
 public class Band{
-   float[] spec;
+  //0 is left
+  //1 is mid
+  //2 is right
+   float[][] spec;
    int size;
+   //fifo style history of what samples have passed through
    float[][] history;
    int histLen;
-   float max;
-   float avg;
    
-   public Band(float[] sound, int h){
+   //analysis
+   float maxIntensity;
+   float avg;
+   //to add:
+   //key detection to be paired with color + effect choice
+   
+   public Band(float[][] sound, int h){
      stream(sound);
      size = sound.length;
      histLen = h;
      history = new float[histLen][size];
    }
    
-   private void stream(float[] sound){
+   private void stream(float[][] sound){
      spec = sound;
      analyze();
      //for(int i = histLen; i > 0; i--){
@@ -108,28 +156,26 @@ public class Band{
    private void analyze(){
      float tmax = 0;
      float tavg = 0;
-     for(float x: spec){
+     for(float x: spec[1]){
        tmax = max(tmax, x);
        tavg += x;
      }
      tavg /= size;
      avg = tavg;
-     max = tmax;
+     maxIntensity = tmax;
    }
    
    public void display(float left, float top, float right, float bottom){
       float w = (right-left);
       float h = (bottom-top);
       float x_scale = w/size;
-      float max = 0;  
       for(int i = 0; i < size; i++){
-        line( i*x_scale, h, i*x_scale, h - spec[i]*h*10 );
+        line( i*x_scale, h, i*x_scale, h - spec[1][i]*h*10 );
         fill(100);
-        ellipse(w/2.0, h/2.0, x_scale*spec[i]*1000, x_scale*spec[i]*1000);
-        max = max(max, spec[i]);
+        ellipse(w/2.0, h/2.0, x_scale*spec[1][i]*1000, x_scale*spec[1][i]*1000);
       }
       fill((100+255*sin(frameCount*25))%256,(20+255*sin(frameCount*20))%256,50,(100+255*sin(frameCount*12))%256);
-      ellipse(w/2.0, h/2.0, x_scale*max*1500.0, x_scale*max*1500.0);
+      ellipse(w/2.0, h/2.0, x_scale*maxIntensity*1500.0, x_scale*maxIntensity*1500.0);
    }
    
 }
