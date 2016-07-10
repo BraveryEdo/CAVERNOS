@@ -16,6 +16,9 @@ void setup() {
 void draw() { 
   background(255);
   for(int i = 0; i < ap.bands.length; i++){
+    stroke(200);
+    fill(i*20);
+    rect(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
     ap.bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
   }
 }
@@ -34,8 +37,8 @@ public class AudioProcessor{
   //to test: getFreq(Hz)
   //getBandwidth()
   
-  int sampleRate = 2048;
-  int specSize = 1024;
+  int sampleRate = 8192;
+  int specSize = 8192;
   int histDepth = 16;
   float[][] magnitude;
   float[][][] history;
@@ -48,19 +51,20 @@ public class AudioProcessor{
     high freq: 4k > 12khz
     Very high freq: 10k > 20khz and above
   */
-  int[] bottomLimit =   {0,    80,    400,   1000,  4000,  10000};
-  int[] topLimit =      {100,  500,   2000,  6000,  12000, 20000};
+  float[] bottomLimit =   {0,    80,    400,   1000,  4000,  10000};
+  float[] topLimit =      {100,  500,   2000,  6000,  12000, 20000};
   
   //figure out the appropriate ranges for different effects to react to
   //frequency in Hz = i*sampleRate/SpecSize
-  int mult = specSize/sampleRate;
+  float mult = float(specSize)/float(sampleRate);
   
-  int[] subRange = {bottomLimit[0]*mult, topLimit[0]*mult};
-  int[] lowRange = {bottomLimit[1]*mult, topLimit[1]*mult};
-  int[] midRange = {bottomLimit[2]*mult, topLimit[2]*mult};
-  int[] upperRange = {bottomLimit[3]*mult, topLimit[3]*mult};
-  int[] highRange = {bottomLimit[4]*mult, topLimit[4]*mult};
-  int[] bleederRange = {bottomLimit[5]*mult, topLimit[5]*mult};
+  int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
+  
+  int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
+  int[] midRange = {floor(bottomLimit[2]*mult), floor(topLimit[2]*mult)};
+  int[] upperRange = {floor(bottomLimit[3]*mult), floor(topLimit[3]*mult)};
+  int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
+  int[] bleederRange = {floor(bottomLimit[5]*mult), floor(topLimit[5]*mult)};
  
   public AudioProcessor(){
     minim = new Minim(this);
@@ -71,30 +75,92 @@ public class AudioProcessor{
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[3][specSize/2 -1];
     history = new float[histDepth][3][specSize/2 -1];
+    
+    float[][] subArr = new float[3][subRange[1]-subRange[0]];
+    int c = 0;
+    for(int i = subRange[0]; i < subRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         subArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
+    
+    float[][] lowArr = new float[3][lowRange[1]-lowRange[0]];
+    c = 0;
+    for(int i = lowRange[0]; i < lowRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         lowArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
+    
+    float[][] midArr = new float[3][midRange[1]-midRange[0]];
+    c = 0;
+    for(int i = midRange[0]; i < midRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         midArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
 
-    float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
-                        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
-                        Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+
+    float[][] upperArr = new float[3][upperRange[1]-upperRange[0]];
+    c = 0;
+    for(int i = upperRange[0]; i < upperRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         upperArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
+    
+    float[][] highArr = new float[3][highRange[1]-highRange[0]];
+    c = 0;
+    for(int i = highRange[0]; i < highRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         highArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
+
+
+    float[][] bleederArr = new float[3][bleederRange[1]-bleederRange[0]];
+    c = 0;
+    for(int i = bleederRange[0]; i < bleederRange[1]; i++){
+      for(int j = 0; j < 3; j++){
+         bleederArr[j][c] = magnitude[j][i]; 
+      }
+      c++;
+    }
+    println("mult:", mult);
+    println("subRange:", subRange);
+    println("subArr[1]:");
+    println(subArr[1]);
+            
+       //float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
+       //                   Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
+       //                   Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
                         
-    float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
-                        Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
-                        Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+
+                       
+    //float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
+    //                    Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
+    //                    Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
                         
-    float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
-                        Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
-                        Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+    //float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
+    //                    Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
+    //                    Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
                         
-    float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
-                          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
-                          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+    //float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
+    //                      Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
+    //                      Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
                           
-    float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
-                         Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
-                         Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+    //float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
+    //                     Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
+    //                     Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
                          
-    float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
-                            Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
-                            Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
+    //float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
+    //                        Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
+    //                        Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
                         
     sub = new Band(subArr,16);
     low = new Band(lowArr,16);
@@ -135,29 +201,86 @@ public class AudioProcessor{
         magnitude[1][i] = mix_bin;
         magnitude[2][i] = right_bin;
         
-       float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
-                          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
-                          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+        float[][] subArr = new float[3][subRange[1]-subRange[0]];
+        int c = 0;
+        for(int k = subRange[0]; k < subRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             subArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+        
+        float[][] lowArr = new float[3][lowRange[1]-lowRange[0]];
+        c = 0;
+        for(int k = lowRange[0]; k < lowRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             lowArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+        
+        float[][] midArr = new float[3][midRange[1]-midRange[0]];
+        c = 0;
+        for(int k = midRange[0]; k < midRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             midArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+    
+    
+        float[][] upperArr = new float[3][upperRange[1]-upperRange[0]];
+        c = 0;
+        for(int k = upperRange[0]; k < upperRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             upperArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+        
+        float[][] highArr = new float[3][highRange[1]-highRange[0]];
+        c = 0;
+        for(int k = highRange[0]; k < highRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             highArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+    
+    
+        float[][] bleederArr = new float[3][bleederRange[1]-bleederRange[0]];
+        c = 0;
+        for(int k = bleederRange[0]; k < bleederRange[1]; k++){
+          for(int j = 0; j < 3; j++){
+             bleederArr[j][c] = magnitude[j][k]; 
+          }
+          c++;
+        }
+        
+       //float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
+       //                   Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
+       //                   Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
                         
-      float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
-                          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
-                          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+      //float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
+      //                    Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
+      //                    Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
                         
-      float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
-                          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
-                          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+      //float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
+      //                    Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
+      //                    Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
                         
-      float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
-                            Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
-                            Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+      //float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
+      //                      Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
+      //                      Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
                           
-      float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
-                           Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
-                           Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+      //float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
+      //                     Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
+      //                     Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
                          
-      float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
-                              Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
-                              Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
+      //float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
+      //                        Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
+      //                        Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
+                             
                               
       sub.stream(subArr);
       low.stream(lowArr);
