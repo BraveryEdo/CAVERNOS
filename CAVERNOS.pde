@@ -37,7 +37,7 @@ public class AudioProcessor{
   //to test: getFreq(Hz)
   //getBandwidth()
   
-  int sampleRate = 8192;
+  int sampleRate = 131072;
   int specSize = 8192;
   int histDepth = 16;
   float[][] magnitude;
