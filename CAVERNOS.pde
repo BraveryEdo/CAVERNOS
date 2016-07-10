@@ -4,16 +4,20 @@ static Semaphore semaphoreExample = new Semaphore(1);
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 
+AudioProcessor ap;
+
 void setup() {
   size(640,360, P3D);
   background(255);
-
+  ap = new AudioProcessor();
 }      
 
 
 void draw() { 
   background(255);
-  
+  for(int i = 0; i < ap.bands.length; i++){
+    ap.bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+  }
 }
 
 //define an effects class should take an array and an area it can display in
@@ -25,11 +29,12 @@ public class AudioProcessor{
   AudioInput in;
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, bleeder;
+  Band[] bands;
   
   //to test: getFreq(Hz)
   //getBandwidth()
   
-  int sampleRate = 44100;
+  int sampleRate = 2048;
   int specSize = 1024;
   int histDepth = 16;
   float[][] magnitude;
@@ -66,8 +71,7 @@ public class AudioProcessor{
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[3][specSize/2 -1];
     history = new float[histDepth][3][specSize/2 -1];
-    
-    //okay to do this in main thread during creation but spawn multiple threads for streaming
+
     float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
                         Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
                         Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
@@ -98,10 +102,23 @@ public class AudioProcessor{
     upper = new Band(upperArr,16);
     high = new Band(highArr,16);
     bleeder = new Band(bleederArr,16); 
+    
+    bands = new Band[6];
+    bands[0] = sub;
+    bands[1] = low;
+    bands[2] = mid;
+    bands[3] = upper;
+    bands[4] = high;
+    bands[5] = bleeder;
+    
+    logicThread.start();
   }
   
   Thread logicThread = new Thread(new Runnable() {
     public void run(){
+      System.out.println(Thread.currentThread().getName() + " : logicThreadStarted");
+      
+      while(true){
       //update audio buffer
       rfft.forward(in.right);
       lfft.forward(in.left);
@@ -117,8 +134,38 @@ public class AudioProcessor{
         magnitude[0][i] = left_bin;
         magnitude[1][i] = mix_bin;
         magnitude[2][i] = right_bin;
-      }
-    }});
+        
+       float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
+                          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
+                          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+                        
+      float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]),
+                          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]),
+                          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+                        
+      float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]),
+                          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]),
+                          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+                        
+      float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]),
+                            Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]),
+                            Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+                          
+      float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]),
+                           Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
+                           Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+                         
+      float[][] bleederArr = {Arrays.copyOfRange(magnitude[0], bleederRange[0], bleederRange[1]),
+                              Arrays.copyOfRange(magnitude[1], bleederRange[0], bleederRange[1]),
+                              Arrays.copyOfRange(magnitude[2], bleederRange[0], bleederRange[1])};
+                              
+      sub.stream(subArr);
+      low.stream(lowArr);
+      mid.stream(midArr);
+      upper.stream(upperArr);
+      high.stream(highArr);
+      bleeder.stream(bleederArr);
+      }}}});
 }
 
 public class Band{
@@ -139,7 +186,7 @@ public class Band{
    
    public Band(float[][] sound, int h){
      stream(sound);
-     size = sound.length;
+     size = sound[1].length;
      histLen = h;
      history = new float[histLen][size];
    }
