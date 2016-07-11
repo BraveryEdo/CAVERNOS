@@ -9,7 +9,8 @@ AudioProcessor ap;
 void setup() {
   size(640,360, P3D);
   background(255);
-  ap = new AudioProcessor();
+  frameRate(240);
+  ap = new AudioProcessor(1000);
 }      
 
 
@@ -33,6 +34,7 @@ public class AudioProcessor{
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, bleeder;
   Band[] bands;
+  int logicRate, lastLogicUpdate;
   
   //to test: getFreq(Hz)
   //getBandwidth()
@@ -65,7 +67,7 @@ public class AudioProcessor{
   int[] upperRange = {floor(bottomLimit[3]*mult), floor(topLimit[3]*mult)};
   int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
  
-  public AudioProcessor(){
+  public AudioProcessor(int lr){
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
     rfft = new FFT(in.bufferSize(), in.sampleRate());
@@ -76,6 +78,8 @@ public class AudioProcessor{
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[3][specSize];
     history = new float[histDepth][3][specSize];
+    logicRate = lr;
+    lastLogicUpdate = 0;
      
      float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
                        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
@@ -159,6 +163,23 @@ public class AudioProcessor{
       mid.stream(midArr);
       upper.stream(upperArr);
       high.stream(highArr);
+      
+      //------------
+      //framelimiter
+      int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
+      if (timeToWait > 1) {
+        try {
+          //sleep long enough so we aren't faster than the logicFPS
+          Thread.currentThread().sleep( timeToWait );
+        }
+        catch ( InterruptedException e )
+        {
+          e.printStackTrace();
+          Thread.currentThread().interrupt();
+        }
+      }
+      lastLogicUpdate = millis();
+      
       }}}});
 }
 
