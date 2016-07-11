@@ -34,27 +34,16 @@ public class AudioProcessor{
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, bleeder;
   Band[] bands;
+  
   int logicRate, lastLogicUpdate;
-  
-  //to test: getFreq(Hz)
-  //getBandwidth()
-  
-  int sampleRate = 65536/4;
+  int sampleRate = 8192;
   int specSize = 2048;
   int histDepth = 16;
   float[][] magnitude;
   float[][][] history;
-  
-    /*
-    sub bass : 0 > 100hz
-    mid bass : 80 > 500hz
-    mid range: 400 > 2khz
-    upper mid: 1k > 6khz
-    high freq: 4k > 12khz
-    Very high freq: 10k > 20khz and above //ignored due to nyquist
-  */
-  float[] bottomLimit =   {0,    80,    400,   1000,  4000};
-  float[] topLimit =      {100,  500,   2000,  6000,  12000};
+
+  float[] bottomLimit = {0, sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2};
+  float[] topLimit = {sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2, sampleRate};
   
   //figure out the appropriate ranges for different effects to react to
   //frequency in Hz = i*sampleRate/SpecSize
@@ -79,7 +68,7 @@ public class AudioProcessor{
     magnitude = new float[3][specSize];
     history = new float[histDepth][3][specSize];
     logicRate = lr;
-    lastLogicUpdate = 0;
+    lastLogicUpdate = millis();
      
      float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
                        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
