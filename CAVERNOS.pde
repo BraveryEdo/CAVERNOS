@@ -75,6 +75,18 @@ public class ColorPicker{
     return picked; 
   }
   
+  public color multiMix(float[] hzs, float[] mags){
+    if(hzs.length > 1){
+      color mixer = pick(hzs[0]);
+      for(int i = 1; i < hzs.length; i++){
+        mixer = lerpColor(mixer, pick(hzs[i]), mags[i]/(mags[i]+mags[i-1]));
+      }
+      return #FF0000;
+    } else {
+     return mix(hzs[0]); 
+    }
+  }
+  
   public color mix(float hz){
     int index = 0;
     while(hz > freqs[index] && index < freqs.length){ index ++; }
@@ -127,7 +139,7 @@ public class AudioProcessor{
     logicRate = lr;
     lastLogicUpdate = millis();
      
-     float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
+    float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]),
                        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]),
                        Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
                        
@@ -147,12 +159,17 @@ public class AudioProcessor{
                         Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
                         Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
                          
+    float[][] sub2 = specto32(subArr);
+    float[][] low2 = specto32(lowArr);
+    float[][] mid2 = specto32(midArr);
+    float[][] upper2 = specto32(upperArr);
+    float[][] high2 = specto32(highArr);
 
-    sub = new Band(subArr, 16, hzMult, subRange[0]);
-    low = new Band(lowArr, 16, hzMult, lowRange[0]);
-    mid = new Band(midArr, 16, hzMult, midRange[0]);
-    upper = new Band(upperArr, 16, hzMult, upperRange[0]);
-    high = new Band(highArr, 16, hzMult, highRange[0]);
+    sub = new Band(sub2, 16, hzMult, subRange[0],subArr[1].length/32);
+    low = new Band(low2, 16, hzMult, lowRange[0], lowArr[1].length/32);
+    mid = new Band(mid2, 16, hzMult, midRange[0], midArr[1].length/32);
+    upper = new Band(upper2, 16, hzMult, upperRange[0], upperArr[1].length/32);
+    high = new Band(high2, 16, hzMult, highRange[0], highArr[1].length/32);
     
     bands = new Band[5];
     bands[0] = sub;
@@ -163,6 +180,30 @@ public class AudioProcessor{
     
     
     logicThread.start();
+  }
+  
+  //reduce each channel's size to 32
+  public float[][] specto32(float[][] in){
+    if(in[1].length > 32){
+        float[][] t = new float[3][32];
+        int n = in[1].length/32;
+        int count = 0;
+        for(int i = 0; i < in[1].length; i += n){
+            float l = 0, m = 0, r = 0;
+            for(int j = 0; j < n; j++){
+              l += in[0][i + j];
+              m += in[1][i + j];
+              r += in[2][i + j];
+            }
+            t[0][count] = l/float(n);
+            t[1][count] = m/float(n);
+            t[2][count] = r/float(n);
+            count++;
+        }
+        return t;
+    } else {
+       return in; 
+    }
   }
   
   Thread logicThread = new Thread(new Runnable() {
@@ -203,13 +244,17 @@ public class AudioProcessor{
                           Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]),
                           Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
                          
-                             
+      float[][] sub2 = specto32(subArr);
+      float[][] low2 = specto32(lowArr);
+      float[][] mid2 = specto32(midArr);
+      float[][] upper2 = specto32(upperArr);
+      float[][] high2 = specto32(highArr);                       
                               
-      sub.stream(subArr);
-      low.stream(lowArr);
-      mid.stream(midArr);
-      upper.stream(upperArr);
-      high.stream(highArr);
+      sub.stream(sub2);
+      low.stream(low2);
+      mid.stream(mid2);
+      upper.stream(upper2);
+      high.stream(high2);
       
       //------------
       //framelimiter
@@ -241,20 +286,23 @@ public class Band{
    int histLen;
    int offset;
    float hzMult;
+   int binSize;
    
    //analysis
    float maxIntensity;
    float avg;
+   int maxInd;
    //to add:
    //key detection to be paired with color + effect choice
    
-   public Band(float[][] sound, int h, float hzm, int indexOffset){
+   public Band(float[][] sound, int h, float hzm, int indexOffset, int bs){
      stream(sound);
      size = sound[1].length;
      histLen = h;
      history = new float[histLen][size];
      hzMult = hzm;
      offset = indexOffset;
+     binSize = bs;
    }
    
    private void stream(float[][] sound){
@@ -268,22 +316,28 @@ public class Band{
    
    private void analyze(){
      float tmax = 0;
+     int imax = 0;
      float tavg = 0;
-     for(float x: spec[1]){
-       tmax = max(tmax, x);
-       tavg += x;
+     for(int i = 0; i < spec[1].length; i++){
+       if(spec[1][i] > tmax){
+         tmax = spec[1][i];
+         imax = i;
+       }
+       tavg += spec[1][i];
      }
      tavg /= size;
      avg = tavg;
      maxIntensity = tmax;
+     maxInd = imax;
    }
    
    public void display(float left, float top, float right, float bottom){
       float w = (right-left);
       float h = (bottom-top);
       float x_scale = w/size;
+      
+      stroke(cp.pick(hzMult * (maxInd * binSize + offset)));
       for(int i = 0; i < size; i++){
-        stroke(cp.pick(hzMult * (i + offset)));
         line( i*x_scale, bottom, i*x_scale, bottom - min(spec[1][i], h));
       }
    }
