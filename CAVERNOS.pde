@@ -5,12 +5,14 @@ import ddf.minim.*;
 import ddf.minim.analysis.*;
 
 AudioProcessor ap;
+ColorPicker cp;
 
 void setup() {
   size(1900,1000, P3D);
   background(255);
   frameRate(240);
   ap = new AudioProcessor(1000);
+  cp = new ColorPicker();
 }      
 
 
@@ -50,8 +52,9 @@ public class ColorPicker{
   color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000,  #DB0000, #FF3600, #FFC100, #BFFF00};
   
   public ColorPicker(){
+    int octaves = 12;
+    freqs = new float[octaves*baseFreqs.length];
     
-    int octaves = 9;
     for(int i = 0; i < octaves; i++){
        for(int j = 0; j < baseFreqs.length; j++){
            freqs[i*baseFreqs.length + j] = baseFreqs[j]*pow(2,i); 
@@ -61,25 +64,25 @@ public class ColorPicker{
   
   public color pick(float hz){
     int index = 0;
-    while(hz < freqs[index]){ index ++; }
+    while(hz > freqs[index] && index < freqs.length){index ++;}
     color picked;
     
     if(freqs[index] - hz < hz - freqs[max(index - 1, 0)]){
-     picked = colorChart[index]; 
+     picked = colorChart[index%colorChart.length]; 
     } else {
-     picked = colorChart[max(index - 1, 0)]; 
+     picked = colorChart[max(index - 1, 0)%colorChart.length]; 
     }
     return picked; 
   }
   
   public color mix(float hz){
     int index = 0;
-    while(hz < freqs[index]){ index ++; }
+    while(hz > freqs[index] && index < freqs.length){ index ++; }
     float lowerDiff = hz - freqs[max(index - 1, 0)];
     float upperDiff = freqs[index] - hz;
     float diff = lowerDiff + upperDiff;
     
-    return lerpColor(colorChart[max(index - 1, 0)], colorChart[index], lowerDiff/diff);
+    return lerpColor(colorChart[max(index - 1, 0)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   }
   
 }
@@ -104,6 +107,7 @@ public class AudioProcessor{
   float[] topLimit = {sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2, sampleRate};
   
   float mult = float(specSize)/float(sampleRate);
+  float hzMult = float(sampleRate)/float(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
   
   int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
   int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
@@ -144,11 +148,11 @@ public class AudioProcessor{
                         Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
                          
 
-    sub = new Band(subArr,16);
-    low = new Band(lowArr,16);
-    mid = new Band(midArr,16);
-    upper = new Band(upperArr,16);
-    high = new Band(highArr,16);
+    sub = new Band(subArr, 16, hzMult, subRange[0]);
+    low = new Band(lowArr, 16, hzMult, lowRange[0]);
+    mid = new Band(midArr, 16, hzMult, midRange[0]);
+    upper = new Band(upperArr, 16, hzMult, upperRange[0]);
+    high = new Band(highArr, 16, hzMult, highRange[0]);
     
     bands = new Band[5];
     bands[0] = sub;
@@ -235,6 +239,8 @@ public class Band{
    //fifo style history of what samples have passed through
    float[][] history;
    int histLen;
+   int offset;
+   float hzMult;
    
    //analysis
    float maxIntensity;
@@ -242,11 +248,13 @@ public class Band{
    //to add:
    //key detection to be paired with color + effect choice
    
-   public Band(float[][] sound, int h){
+   public Band(float[][] sound, int h, float hzm, int indexOffset){
      stream(sound);
      size = sound[1].length;
      histLen = h;
      history = new float[histLen][size];
+     hzMult = hzm;
+     offset = indexOffset;
    }
    
    private void stream(float[][] sound){
@@ -274,8 +282,8 @@ public class Band{
       float w = (right-left);
       float h = (bottom-top);
       float x_scale = w/size;
-      stroke(255);
       for(int i = 0; i < size; i++){
+        stroke(cp.pick(hzMult * (i + offset)));
         line( i*x_scale, bottom, i*x_scale, bottom - min(spec[1][i], h));
       }
    }
