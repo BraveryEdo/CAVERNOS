@@ -7,7 +7,7 @@ import ddf.minim.analysis.*;
 AudioProcessor ap;
 
 void setup() {
-  size(640,360, P3D);
+  size(1900,1000, P3D);
   background(255);
   frameRate(240);
   ap = new AudioProcessor(1000);
@@ -24,8 +24,65 @@ void draw() {
   }
 }
 
-//define an effects class should take an array and an area it can display in
-//decide wether to draw directly using the effect or have it output a pgraphics object
+public abstract class Effect{
+ private String effectName;
+ 
+  public Effect(){
+    
+  }
+  
+  void analyze(){}
+  void stats(){
+    println("triggered: ", effectName);
+  }
+  
+}
+
+public class ColorPicker{
+  //using A4 tuning of 432 hz using an equal tempered scale: http://www.phy.mtu.edu/~suits/notefreq432.html
+  // frequency n = baseFreqeuency (A4 of 432hz) * a^n where a = 2^(1/12) and n equals the number of half steps from the fixed base note
+  //                  C0,     C0#,   D0,    D0#,   E0,    F0,     F0#,    G0,     G0#,   A0,    A0#,   B0    
+  float[] baseFreqs= {16.055, 17.01, 18.02, 19.09, 20.225, 21.43, 22.705, 24.055, 25.48, 27.00, 28.61, 30.31};
+  float[] freqs;
+  
+  //color picking based off the wavelength that a certain color is in light based on a base 432hz tuning, example drawn from: http://www.roelhollander.eu/en/tuning-frequency/sound-light-colour/, consider this for later: http://www.fourmilab.ch/documents/specrend/
+  //                    C0,       C0#,     D0,      D0#,     E0,      F0,     F0#,      G0,       G0#,     A0,      A0#,     B0    
+  color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000,  #DB0000, #FF3600, #FFC100, #BFFF00};
+  
+  public ColorPicker(){
+    
+    int octaves = 9;
+    for(int i = 0; i < octaves; i++){
+       for(int j = 0; j < baseFreqs.length; j++){
+           freqs[i*baseFreqs.length + j] = baseFreqs[j]*pow(2,i); 
+       }
+    }
+  }
+  
+  public color pick(float hz){
+    int index = 0;
+    while(hz < freqs[index]){ index ++; }
+    color picked;
+    
+    if(freqs[index] - hz < hz - freqs[max(index - 1, 0)]){
+     picked = colorChart[index]; 
+    } else {
+     picked = colorChart[max(index - 1, 0)]; 
+    }
+    return picked; 
+  }
+  
+  public color mix(float hz){
+    int index = 0;
+    while(hz < freqs[index]){ index ++; }
+    float lowerDiff = hz - freqs[max(index - 1, 0)];
+    float upperDiff = freqs[index] - hz;
+    float diff = lowerDiff + upperDiff;
+    
+    return lerpColor(colorChart[max(index - 1, 0)], colorChart[index], lowerDiff/diff);
+  }
+  
+}
 
 public class AudioProcessor{
   //audio processing elements
@@ -42,15 +99,13 @@ public class AudioProcessor{
   float[][] magnitude;
   float[][][] history;
 
+  //ranges are based on a sample frequency of 8192 (2^13) 
   float[] bottomLimit = {0, sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2};
   float[] topLimit = {sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2, sampleRate};
   
-  //figure out the appropriate ranges for different effects to react to
-  //frequency in Hz = i*sampleRate/SpecSize
   float mult = float(specSize)/float(sampleRate);
   
   int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
-  
   int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
   int[] midRange = {floor(bottomLimit[2]*mult), floor(topLimit[2]*mult)};
   int[] upperRange = {floor(bottomLimit[3]*mult), floor(topLimit[3]*mult)};
@@ -61,9 +116,7 @@ public class AudioProcessor{
     in = minim.getLineIn(Minim.STEREO, sampleRate);
     rfft = new FFT(in.bufferSize(), in.sampleRate());
     lfft = new FFT(in.bufferSize(), in.sampleRate());
-    rfft.logAverages(10,2);
-    lfft.logAverages(10,2);
-    println("buffer size is: %i", in.bufferSize());
+    
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[3][specSize];
     history = new float[histDepth][3][specSize];
@@ -116,6 +169,7 @@ public class AudioProcessor{
       //update audio buffer
       rfft.forward(in.right);
       lfft.forward(in.left);
+      
       
       for (int i = 0; i < specSize; i++) {
         float left_bin = lfft.getBand(i);
@@ -222,7 +276,7 @@ public class Band{
       float x_scale = w/size;
       stroke(255);
       for(int i = 0; i < size; i++){
-        line( i*x_scale, bottom, i*x_scale, bottom - spec[1][i]);
+        line( i*x_scale, bottom, i*x_scale, bottom - min(spec[1][i], h));
       }
    }
    
