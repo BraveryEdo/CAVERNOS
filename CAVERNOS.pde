@@ -70,7 +70,8 @@ public class ColorPicker{
     if(freqs[index] - hz < hz - freqs[max(index - 1, 0)]){
      picked = colorChart[index%colorChart.length]; 
     } else {
-     picked = colorChart[max(index - 1, 0)%colorChart.length]; 
+      if(index == 0){ index = colorChart.length; }
+      picked = colorChart[(index - 1)%colorChart.length]; 
     }
     return picked; 
   }
@@ -94,7 +95,7 @@ public class ColorPicker{
     float upperDiff = freqs[index] - hz;
     float diff = lowerDiff + upperDiff;
     
-    return lerpColor(colorChart[max(index - 1, 0)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
+    return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   }
   
 }
@@ -338,7 +339,7 @@ public class Band{
       
       stroke(cp.pick(hzMult * (maxInd * binSize + offset)));
       for(int i = 0; i < size; i++){
-        line( i*x_scale, bottom, i*x_scale, bottom - min(spec[1][i], h));
+        line( (i + .5)*x_scale, bottom, (i + .5)*x_scale, bottom - min(spec[1][i], h));
       }
    }
    
