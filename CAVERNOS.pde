@@ -93,11 +93,11 @@ public class AudioProcessor{
     float[][] upper2 = specResize(upperArr, newSize);
     float[][] high2 = specResize(highArr, newSize);
 
-    sub = new Band(sub2, 16, hzMult, subRange[0],subArr[1].length/32);
-    low = new Band(low2, 16, hzMult, lowRange[0], lowArr[1].length/32);
-    mid = new Band(mid2, 16, hzMult, midRange[0], midArr[1].length/32);
-    upper = new Band(upper2, 16, hzMult, upperRange[0], upperArr[1].length/32);
-    high = new Band(high2, 16, hzMult, highRange[0], highArr[1].length/32);
+    sub = new Band(sub2, 16, hzMult, subRange, newSize);
+    low = new Band(low2, 16, hzMult, lowRange, newSize);
+    mid = new Band(mid2, 16, hzMult, midRange, newSize);
+    upper = new Band(upper2, 16, hzMult, upperRange, newSize);
+    high = new Band(high2, 16, hzMult, highRange, newSize);
     
     bands = new Band[5];
     bands[0] = sub;
@@ -243,7 +243,7 @@ public class Band{
    int histLen;
    int offset;
    float hzMult;
-   int binSize;
+   float binSize;
    
    //analysis
    float maxIntensity;
@@ -252,14 +252,14 @@ public class Band{
    //to add:
    //key detection to be paired with color + effect choice
    
-   public Band(float[][] sound, int h, float hzm, int indexOffset, int bs){
+   public Band(float[][] sound, int h, float hzm, int[] indexRange, int newSize){
      stream(sound);
      size = sound[1].length;
      histLen = h;
      history = new float[histLen][size];
      hzMult = hzm;
-     offset = indexOffset;
-     binSize = bs;
+     offset = indexRange[0];
+     binSize = (indexRange[1]-indexRange[0])/float(newSize);
    }
    
    private void stream(float[][] sound){
