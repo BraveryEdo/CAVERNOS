@@ -93,7 +93,7 @@ public class AudioProcessor{
     float[][] upper2 = specResize(upperArr, newSize);
     float[][] high2 = specResize(highArr, newSize);
     
-    int histSize = 16;
+    int histSize = 64;
     sub = new Band(sub2, histSize, hzMult, subRange, newSize);
     low = new Band(low2, histSize, hzMult, lowRange, newSize);
     mid = new Band(mid2, histSize, hzMult, midRange, newSize);
@@ -321,7 +321,7 @@ public class Band{
        color histC = colorHist[j];
        stroke(histC);
        for(int i = 0; i < size; i++){ 
-        line(j+ (i + .5)*x_scale, bottom,j+ (i + .5)*x_scale, bottom - min(history[j][1][i], h));
+        line(2*j/x_scale + (i + .5)*x_scale, bottom, 2*j/x_scale+ (i + .5)*x_scale, bottom - min(history[j][1][i], h));
        }
       }
    }
