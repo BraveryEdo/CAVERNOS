@@ -8,7 +8,7 @@ AudioProcessor ap;
 ColorPicker cp;
 
 void setup() {
-  size(1900,1000, P3D);
+  size(1000,700, P3D);
   background(255);
   frameRate(240);
   ap = new AudioProcessor(1000);
@@ -92,12 +92,13 @@ public class AudioProcessor{
     float[][] mid2 = specResize(midArr, newSize);
     float[][] upper2 = specResize(upperArr, newSize);
     float[][] high2 = specResize(highArr, newSize);
-
-    sub = new Band(sub2, 16, hzMult, subRange, newSize);
-    low = new Band(low2, 16, hzMult, lowRange, newSize);
-    mid = new Band(mid2, 16, hzMult, midRange, newSize);
-    upper = new Band(upper2, 16, hzMult, upperRange, newSize);
-    high = new Band(high2, 16, hzMult, highRange, newSize);
+    
+    int histSize = 16;
+    sub = new Band(sub2, histSize, hzMult, subRange, newSize);
+    low = new Band(low2, histSize, hzMult, lowRange, newSize);
+    mid = new Band(mid2, histSize, hzMult, midRange, newSize);
+    upper = new Band(upper2, histSize, hzMult, upperRange, newSize);
+    high = new Band(high2, histSize, hzMult, highRange, newSize);
     
     bands = new Band[5];
     bands[0] = sub;
@@ -239,7 +240,9 @@ public class Band{
    float[][] spec;
    int size;
    //fifo style history of what samples have passed through
-   float[][] history;
+   float[][][] history;
+   float[][] analysisHist;
+   color[] colorHist;
    int histLen;
    int offset;
    float hzMult;
@@ -249,26 +252,28 @@ public class Band{
    float maxIntensity;
    float avg;
    int maxInd;
-   //to add:
-   //key detection to be paired with color + effect choice
+   int numProperties = 3;
+   
+   color picked;
+   
+   int lastThreadUpdate;
    
    public Band(float[][] sound, int h, float hzm, int[] indexRange, int newSize){
      stream(sound);
      size = sound[1].length;
      histLen = h;
-     history = new float[histLen][size];
+     history = new float[histLen][3][size];
+     analysisHist = new float[histLen][numProperties];
+     colorHist = new color[histLen];
      hzMult = hzm;
      offset = indexRange[0];
      binSize = (indexRange[1]-indexRange[0])/float(newSize);
+     lastThreadUpdate = millis();
+     bandAnalysisThread.start();
    }
    
    private void stream(float[][] sound){
      spec = sound;
-     analyze();
-     //for(int i = histLen; i > 0; i--){
-     //   history[i] = history[i-1]; 
-     //}
-     //history[0] = sound;
    }
    
    private void analyze(){
@@ -288,16 +293,64 @@ public class Band{
      maxInd = imax;
    }
    
+   private void shiftHist(){
+     for(int i = histLen-1; i > 0; i--){
+        history[i] = history[i-1]; 
+        analysisHist[i] = analysisHist[i-1];
+        colorHist[i] = colorHist[i-1];
+     }
+     history[0] = spec;
+     analysisHist[0][0] = maxIntensity;
+     analysisHist[0][1] = avg;
+     analysisHist[0][2] = maxInd;
+     colorHist[0] = picked;
+   }
+   
    public void display(float left, float top, float right, float bottom){
       float w = (right-left);
       float h = (bottom-top);
       float x_scale = w/size;
       
-      stroke(cp.pick(hzMult * (maxInd * binSize + offset)));
+      picked = cp.pick(hzMult * (maxInd * binSize + offset));
+      stroke(picked);
       for(int i = 0; i < size; i++){
         line( (i + .5)*x_scale, bottom, (i + .5)*x_scale, bottom - min(spec[1][i], h));
       }
+      
+     for (int j = 0; j < histLen; j++){
+       color histC = colorHist[j];
+       stroke(histC);
+       for(int i = 0; i < size; i++){ 
+        line(j+ (i + .5)*x_scale, bottom,j+ (i + .5)*x_scale, bottom - min(history[j][1][i], h));
+       }
+      }
    }
+   
+    Thread bandAnalysisThread = new Thread(new Runnable() {
+    public void run(){
+      System.out.println(Thread.currentThread().getName() + " : bandAnalysisThreadStarted");
+      
+      while(true){
+      analyze();
+      shiftHist();
+      
+           //------------
+      //framelimiter
+      int timeToWait = 3 - (millis()-lastThreadUpdate); // set framerateLogic to -1 to not limit;
+      if (timeToWait > 1) {
+        try {
+          //sleep long enough so we aren't faster than the logicFPS
+          Thread.currentThread().sleep( timeToWait );
+        }
+        catch ( InterruptedException e )
+        {
+          e.printStackTrace();
+          Thread.currentThread().interrupt();
+        }
+      }
+      lastThreadUpdate = millis();
+    }}});
+      
    
 }
 
