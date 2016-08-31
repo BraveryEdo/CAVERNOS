@@ -26,6 +26,21 @@ void draw() {
   }
 }
 
+public abstract class Effect{
+ private String effectName;
+ 
+  public Effect(){}
+  
+  void display(){}
+  
+  void outputImg(){}
+  
+  void stats(){
+    println("triggered: ", effectName);
+  }
+  
+}
+
 public class AudioProcessor{
   //audio processing elements
   Minim minim;
@@ -42,8 +57,8 @@ public class AudioProcessor{
   float[][][] history;
 
   //ranges are based on a sample frequency of 8192 (2^13) 
-  float[] bottomLimit = {0, sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2};
-  float[] topLimit = {sampleRate/64, sampleRate/16, sampleRate/8, sampleRate/2, sampleRate};
+  float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
+  float[] topLimit = {sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8, sampleRate/4};
   
   float mult = float(specSize)/float(sampleRate);
   float hzMult = float(sampleRate)/float(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
@@ -319,7 +334,7 @@ public class Band{
       
      for (int j = 0; j < histLen; j++){
        color histC = colorHist[j];
-       stroke(histC);
+       stroke(color(red(histC),blue(histC), green(histC), alpha(histC)*histLen/(j+60)));
        for(int i = 0; i < size; i++){ 
         line(2*j/x_scale + (i + .5)*x_scale, bottom, 2*j/x_scale+ (i + .5)*x_scale, bottom - min(history[j][1][i], h));
        }
@@ -352,20 +367,6 @@ public class Band{
     }}});
       
    
-}
-
-public abstract class Effect{
- private String effectName;
- 
-  public Effect(){
-    
-  }
-  
-  void analyze(){}
-  void stats(){
-    println("triggered: ", effectName);
-  }
-  
 }
 
 public class ColorPicker{
