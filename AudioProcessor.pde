@@ -33,8 +33,8 @@ public class AudioProcessor{
     lfft = new FFT(in.bufferSize(), in.sampleRate());
     
     //spectrum is divided into left, mix, and right channels
-    magnitude = new float[3][specSize];
-    history = new float[histDepth][3][specSize];
+    magnitude = new float[channels][specSize];
+    history = new float[histDepth][channels][specSize];
     logicRate = lr;
     lastLogicUpdate = millis();
      
@@ -65,12 +65,11 @@ public class AudioProcessor{
     float[][] upper2 = specResize(upperArr, newSize);
     float[][] high2 = specResize(highArr, newSize);
     
-    int histSize = 64;
-    sub = new Band(sub2, histSize, hzMult, subRange, newSize);
-    low = new Band(low2, histSize, hzMult, lowRange, newSize);
-    mid = new Band(mid2, histSize, hzMult, midRange, newSize);
-    upper = new Band(upper2, histSize, hzMult, upperRange, newSize);
-    high = new Band(high2, histSize, hzMult, highRange, newSize);
+    sub = new Band(sub2, hzMult, subRange, newSize, "sub");
+    low = new Band(low2, hzMult, lowRange, newSize, "low");
+    mid = new Band(mid2, hzMult, midRange, newSize, "mid");
+    upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
+    high = new Band(high2, hzMult, highRange, newSize, "high");
     
     bands = new Band[5];
     bands[0] = sub;
@@ -87,7 +86,7 @@ public class AudioProcessor{
   public float[][] specResize(float[][] in, int size){
     if(in[1].length > size){
          //scale down size
-        float[][] t = new float[3][size];
+        float[][] t = new float[channels][size];
         int n = in[1].length/size;
         for(int i = 0; i < size; i ++){
             float l = 0, m = 0, r = 0;
@@ -105,7 +104,7 @@ public class AudioProcessor{
        return in; 
     } else {
       //scale up size
-      float[][] t = new float[3][size];
+      float[][] t = new float[channels][size];
       int n = size/in[1].length;
       int count = 0;
       for(int i = 0; i < in[1].length - 1; i ++){
@@ -192,7 +191,7 @@ public class AudioProcessor{
       if (timeToWait > 1) {
         try {
           //sleep long enough so we aren't faster than the logicFPS
-          Thread.currentThread().sleep( timeToWait );
+          Thread.sleep( timeToWait );
         }
         catch ( InterruptedException e )
         {
