@@ -67,16 +67,16 @@ public class EffectManager {
       subVis(left, top, right, bottom); 
       break;
     case "low": 
-      //defaultVis(left, top, right, bottom); 
+      defaultVis(left, top, right, bottom); 
       break;
     case "mid": 
-      //defaultVis(left, top, right, bottom); 
+      defaultVis(left, top, right, bottom); 
       break;
     case "upper": 
-      //defaultVis(left, top, right, bottom); 
+      defaultVis(left, top, right, bottom); 
       break;
     case "high": 
-      //defaultVis(left, top, right, bottom); 
+      defaultVis(left, top, right, bottom); 
       break;
     default: 
       defaultVis(left, top, right, bottom); 
@@ -91,7 +91,6 @@ public class EffectManager {
     float x_scale = w/size;   
     color picked = cp.pick(hzMult * (analysisHist[0][2] * size + offset));
     stroke(picked);
-    fill(picked);
     for (int i = 0; i < size; i++) {
       line( (i + .5)*x_scale, bottom, (i + .5)*x_scale, bottom - min(history[0][1][i], h));
     }
@@ -104,7 +103,6 @@ public class EffectManager {
     
     color picked = cp.pick(hzMult * (analysisHist[0][2] * size + offset));
     stroke(picked);
-    fill(picked);
     for (int i = 0; i < size; i++) {
       line( (i + .5)*x_scale, bottom, (i + .5)*x_scale, bottom - min(history[0][1][i], h));
     }
