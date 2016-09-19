@@ -83,7 +83,16 @@ public class Band {
   Thread bandAnalysisThread = new Thread(new Runnable() {
     public void run() {
       System.out.println(Thread.currentThread().getName() + " " + name + "-band Analysis Thread Started");
-
+        try {
+            Thread.sleep( startupBuffer );
+          }
+          catch ( InterruptedException e )
+          {
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+          }
+          
+          
       while (true) {
         analyze();
         updateEffect();

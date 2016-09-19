@@ -50,7 +50,6 @@ public class EffectManager {
       analysisHist[i] = analysisHist[i-1];
       colorHist[i] = colorHist[i-1];
     }
-    println("push analysis max index for " + effectName + ": " + maxInd);
     history[0] = spec;
     analysisHist[0][0] = maxIntensity;
     analysisHist[0][1] = avg;
