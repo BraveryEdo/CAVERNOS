@@ -18,6 +18,8 @@ public class ColorPicker {
         freqs[i*baseFreqs.length + j] = baseFreqs[j]*pow(2, i);
       }
     }
+    
+    println("color picker loaded");
   }
 
   public color pick(float hz) {
@@ -38,27 +40,28 @@ public class ColorPicker {
     return picked;
   }
 
-  public color multiMix(float[] hzs, float[] mags) {
-    if (hzs.length > 1) {
-      color mixer = pick(hzs[0]);
-      for (int i = 1; i < hzs.length; i++) {
-        mixer = lerpColor(mixer, pick(hzs[i]), mags[i]/(mags[i]+mags[i-1]));
-      }
-      return #FF0000;
-    } else {
-      return mix(hzs[0]);
-    }
-  }
+//not really the right place to do this, I can build it out in the effect manager later
+  //public color multiMix(float[] hzs, float[] mags) {
+  //  if (hzs.length > 1) {
+  //    color mixer = pick(hzs[0]);
+  //    for (int i = 1; i < hzs.length; i++) {
+  //      mixer = lerpColor(mixer, pick(hzs[i]), mags[i]/(mags[i]+mags[i-1]));
+  //    }
+  //    return #FF0000;
+  //  } else {
+  //    return mix(hzs[0]);
+  //  }
+  //}
 
-  public color mix(float hz) {
-    int index = 0;
-    while (hz > freqs[index] && index < freqs.length) { 
-      index ++;
-    }
-    float lowerDiff = hz - freqs[max(index - 1, 0)];
-    float upperDiff = freqs[index] - hz;
-    float diff = lowerDiff + upperDiff;
+  //public color mix(float hz) {
+  //  int index = 0;
+  //  while (hz > freqs[index] && index < freqs.length) { 
+  //    index ++;
+  //  }
+  //  float lowerDiff = hz - freqs[max(index - 1, 0)];
+  //  float upperDiff = freqs[index] - hz;
+  //  float diff = lowerDiff + upperDiff;
 
-    return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
-  }
+  //  return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
+  //}
 }

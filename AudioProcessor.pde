@@ -92,6 +92,7 @@ public class AudioProcessor {
 
 
     logicThread.start();
+    println("audioProcessor started");
   }
 
   //reduce each channel's size to n

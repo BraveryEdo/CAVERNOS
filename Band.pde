@@ -33,9 +33,11 @@ public class Band {
     bandAnalysisThread.start();
     name = title;
 
-    int histSize = 64;
+    int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
+    
+    println("Band analysis for '" + name + "'loaded");
   }   
 
   public void stream(float[][] sound) {

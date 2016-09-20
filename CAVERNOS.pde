@@ -4,17 +4,20 @@ static Semaphore semaphoreExample = new Semaphore(1);
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 
-AudioProcessor ap;
 ColorPicker cp;
+AudioProcessor ap;
+
 int channels = 3;
-long startupBuffer = 3000;
+long startupBuffer = 5000;
 
 void setup() {
   size(1000, 700, P3D);
   background(255);
   frameRate(240);
-  ap = new AudioProcessor(1000);
+  
+  //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
+  ap = new AudioProcessor(1000);
 }      
 
 
@@ -27,6 +30,8 @@ void draw() {
   } else {
     for (int i = 0; i < ap.bands.length; i++) {    
       //ap.bands[i].display(0, 0, width, height);
+      noFill();
+      stroke(255);
       rect(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
       ap.bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
     }
