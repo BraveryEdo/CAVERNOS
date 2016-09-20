@@ -83,7 +83,7 @@ public class EffectManager {
     
     e.streamSpec(spec);
     e.setMaxIndex(maxInd);
-    picked = e.calcColor(maxInd);
+    picked = e.pickColor();
     
     colorHist[0] = picked;
   }
