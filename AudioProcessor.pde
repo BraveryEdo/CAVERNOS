@@ -94,6 +94,17 @@ public class AudioProcessor {
     logicThread.start();
     println("audioProcessor started");
   }
+  
+  void display(){
+    for (int i = 0; i < bands.length; i++){    
+      noFill();
+      stroke(255);
+      //ap.bands[i].display(0, 0, width, height);
+      rect(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+      bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+    }
+  }
+  
 
   //reduce each channel's size to n
   public float[][] specResize(float[][] in, int size) {
@@ -141,9 +152,7 @@ public class AudioProcessor {
 
       t[0][size-1] = in[0][len -1] + (t[0][size - 3] - in[0][len -1]);
       t[1][size-1] = in[1][len -1] + (t[1][size - 3] - in[1][len -1]);
-      ;
-      t[2][size-1] = in[2][len -1] + (t[2][size - 3] - in[2][len -1]);
-      ;
+      t[2][size-1] = in[2][len -1] + (t[2][size - 3] - in[2][len -1]);  
 
       return t;
     }
