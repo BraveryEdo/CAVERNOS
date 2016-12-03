@@ -27,8 +27,10 @@ public class AudioProcessor {
   int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
 
   public AudioProcessor(int lr) {
+    loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
+    
     rfft = new FFT(in.bufferSize(), in.sampleRate());
     lfft = new FFT(in.bufferSize(), in.sampleRate());
 
@@ -93,6 +95,7 @@ public class AudioProcessor {
 
     logicThread.start();
     println("audioProcessor started");
+    loading--;
   }
   
   void display(){

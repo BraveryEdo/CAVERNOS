@@ -14,6 +14,7 @@ public class EffectManager {
   Effect e;
 
   public EffectManager(String name, int h, int s, int analysisProps, float hz, int off) {
+    loading++;
     effectName = name;
     size = s;
     histLen = h;
@@ -44,7 +45,7 @@ public class EffectManager {
     
      switch(effectName) {
     case "all":
-      e = new DefaultVis(size, offset, hzMult);
+      e = new EqRing(size, offset, hzMult);
       break;
     case "sub": 
       e = new SubVis(size, offset, hzMult);
@@ -67,6 +68,7 @@ public class EffectManager {
     }
     
     println("effectManager for '" + name + "' loaded");
+    loading--;
   }
 
 

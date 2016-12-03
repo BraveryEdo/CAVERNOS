@@ -69,10 +69,11 @@ public class SubVis extends Effect{
   void display(float left, float top, float right, float bottom) {
     float w = (right-left);
     float h = (bottom-top);
-    float x_scale = w/size;
+    float mid = (left+right)/2.0;
     stroke(picked);
+    float sectionSize = (w/float(size));
     for (int i = 0; i < size; i++) {
-      line( (i + .5)*x_scale, bottom, (i + .5)*x_scale, bottom - min(spec[1][i], h));
+      line( (i*sectionSize + .5), bottom, (i*sectionSize + .5), bottom - min(spec[1][i], h));
     }
   }
 }

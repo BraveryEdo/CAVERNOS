@@ -19,6 +19,7 @@ public class Band {
   int lastThreadUpdate;
 
   public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String title) {
+    loading++;
     spec = new float[channels][sound[0].length];
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[0].length; j++) {
@@ -37,7 +38,8 @@ public class Band {
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
     
-    println("Band analysis for '" + name + "'loaded");
+    println("Band analysis for '" + name + "' loaded");
+    loading--;
   }   
 
   public void stream(float[][] sound) {
@@ -85,15 +87,15 @@ public class Band {
   Thread bandAnalysisThread = new Thread(new Runnable() {
     public void run() {
       System.out.println(Thread.currentThread().getName() + " " + name + "-band Analysis Thread Started");
+
         try {
-            Thread.sleep( startupBuffer );
-          }
-          catch ( InterruptedException e )
-          {
-            e.printStackTrace();
-            Thread.currentThread().interrupt();
-          }
-          
+          while(loading != 0){ Thread.sleep( 1000 ); }
+        }
+        catch ( InterruptedException e )
+        {
+          e.printStackTrace();
+          Thread.currentThread().interrupt();
+        }
           
       while (true) {
         analyze();

@@ -10,6 +10,7 @@ public class ColorPicker {
   color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
 
   public ColorPicker() {
+    loading++;
     int octaves = 12;
     freqs = new float[octaves*baseFreqs.length];
 
@@ -20,6 +21,7 @@ public class ColorPicker {
     }
     
     println("color picker loaded");
+    loading--;
   }
 
   public color pick(float hz) {

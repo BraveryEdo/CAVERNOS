@@ -1,16 +1,17 @@
-import java.util.concurrent.Semaphore;
 import java.util.Arrays;
-static Semaphore semaphoreExample = new Semaphore(1);
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 
 ColorPicker cp;
 AudioProcessor ap;
 
+//left/mix/right
 int channels = 3;
-long startupBuffer = 5000;
+//incremented/decremented while loading, should be 0 when ready
+int loading = 0;
 
 void setup() {
+  loading++;
   size(1000, 700, P3D);
   background(255);
   frameRate(240);
@@ -18,12 +19,13 @@ void setup() {
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
   ap = new AudioProcessor(1000);
+  loading--;
 }      
 
 
 void draw() {
   background(0);
-  if (millis() < startupBuffer) {
+  if(loading != 0){
       textAlign(CENTER);
       textSize(42);
       text("Loading...", width/2.0, height/2.0);
