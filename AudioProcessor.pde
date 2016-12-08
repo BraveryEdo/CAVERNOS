@@ -106,13 +106,7 @@ public class AudioProcessor {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
-        } else if (bands[i].name == "low") {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
-        } else if (bands[i].name == "mid") {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
-        } else if (bands[i].name == "upper") {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
-        } else if (bands[i].name == "high") {
+        } else {
           bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
         }
       }
@@ -121,13 +115,14 @@ public class AudioProcessor {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
         } else {
+          println(i);
           float x = width/2.0;
-          float w = height/4.0;
-          float y = height-w*(i-.5);
+          float w = height/ap.bands.length;
+          float y = height-w*(i+.5);
           float h = width/ap.bands.length;
 
-          bands[i].display(x+h/2.0, y, h, w, 0, 0, PI/2);
-          bands[i].display(x-h/2.0, y, h, w, PI, 0, -PI/2);
+          bands[i].display(x-h/2.0, y, h, w, 0, 0, -PI/2);
+          bands[i].display(x+h/2.0, y, h, w, PI, 0, PI/2);
         }
       }
     }

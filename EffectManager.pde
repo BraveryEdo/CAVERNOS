@@ -55,7 +55,7 @@ public class EffectManager {
       e = new EqRing(size, offset, hzMult);
       break;
     case "sub": 
-      e = new SubVis(size, offset, hzMult);
+      e = new DefaultVis(size, offset, hzMult);
       break;
     case "low": 
       e = new DefaultVis(size, offset, hzMult);
@@ -93,15 +93,22 @@ public class EffectManager {
     sortedSpecIndex[0] = sortedSpecInd;
     e.streamSpec(spec);
     e.setMaxIndex(maxInd);
-    int colorMixN = 7;
-    color colorMixer = color(255);
-    for(int i = 0 ; i < min(colorMixN, size); i++){
-      colorMixer = lerpColor(colorMixer, e.calcColor(sortedSpecInd[1][i]), .5);
-    }
-    picked = colorMixer;
-    e.setColor(picked);
+    
+    mixN(7, sortedSpecInd);
     
     colorHist[0] = picked;
+  }
+  
+  private void mixN(int n, int[][] sorted){
+    color colorMixer = e.calcColor(sorted[1][0]);
+    float rollInt = history[0][1][sorted[1][0]];
+    for(int i = 1 ; i < min(n, size); i++){
+      colorMixer = lerpColor(colorMixer, e.calcColor(sorted[1][i]), history[0][1][sorted[1][i]]/rollInt);
+      rollInt += history[0][1][sorted[1][i]];
+      
+    }
+    picked = colorMixer;
+    e.setColor(picked); 
   }
 
 
