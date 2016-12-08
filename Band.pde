@@ -5,6 +5,9 @@ public class Band {
   //1 is mid
   //2 is right
   float[][] spec;
+  //sorted by magnitude of spec index
+  float[][] sortedSpec;
+  int[][] sortedSpecIndex;
   int size;
   float binSize;
 
@@ -21,9 +24,14 @@ public class Band {
   public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String title) {
     loading++;
     spec = new float[channels][sound[0].length];
+    sortedSpec = new float[channels][sound[0].length];
+    sortedSpecIndex = new int[channels][sound[0].length];
+
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[0].length; j++) {
         spec[i][j] = 0.0;
+        sortedSpec[i][j] = 0.0;
+        sortedSpecIndex[i][j] = j;
       }
     }
     stream(sound);
@@ -37,16 +45,17 @@ public class Band {
     int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
-    
+
     println("Band analysis for '" + name + "' loaded");
     loading--;
   }   
 
-  public void stream(float[][] sound) {
+  protected void stream(float[][] sound) {
     //println("steam: " + millis());
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[i].length; j++) {
         spec[i][j] = sound[i][j];
+        sortedSpec[i][j] = sound[i][j];
       }
     }
   }
@@ -66,6 +75,39 @@ public class Band {
     avg = tavg;
     maxIntensity = tmax;
     maxInd = imax;
+
+    //reversing bubble sort to get sorted spec (descending order)
+
+    boolean swapped = false;
+    do {
+      swapped = false;
+      for (int i = 0; i < spec[1].length - 2; i++) {
+        for (int c = 0; c < channels; c++) {
+          if (sortedSpec[c][i] < sortedSpec[c][i+1]) {
+            float t = sortedSpec[c][i];
+            sortedSpec[c][i] = sortedSpec[c][i+1];
+            sortedSpec[c][i+1] = t;
+            int t2 = sortedSpecIndex[c][i];
+            sortedSpecIndex[c][i] = sortedSpecIndex[c][i+1];
+            sortedSpecIndex[c][i+1] = t2;
+            swapped = true;
+          }
+        }
+      }
+      for (int i =  spec[1].length - 2; i > 0; i--) {
+        for (int c = 0; c < channels; c++) {
+          if (sortedSpec[c][i] < sortedSpec[c][i+1]) {
+            float t = sortedSpec[c][i];
+            sortedSpec[c][i] = sortedSpec[c][i+1];
+            sortedSpec[c][i+1] = t;
+            int t2 = sortedSpecIndex[c][i];
+            sortedSpecIndex[c][i] = sortedSpecIndex[c][i+1];
+            sortedSpecIndex[c][i+1] = t2;
+            swapped = true;
+          }
+        }
+      }
+    } while (swapped);
   }
 
   public void updateEffect() {
@@ -75,7 +117,7 @@ public class Band {
     //float[][] t = {Arrays.copyOf(spec[0], spec[0].length),
     //               Arrays.copyOf(spec[1], spec[1].length),
     //               Arrays.copyOf(spec[2], spec[2].length)};
-    effectManager.pushAnalysis(spec, maxIntensity, avg, maxInd);
+    effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 
 
@@ -83,20 +125,26 @@ public class Band {
   public void display(float left, float top, float right, float bottom) {
     effectManager.display(left, top, right, bottom);
   }
+  
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+   effectManager.display(x, y, h, w, rx, ry, rz); 
+  }
 
   Thread bandAnalysisThread = new Thread(new Runnable() {
     public void run() {
       System.out.println(Thread.currentThread().getName() + " " + name + "-band Analysis Thread Started");
 
-        try {
-          while(loading != 0){ Thread.sleep( 1000 ); }
+      try {
+        while (loading != 0) { 
+          Thread.sleep( 1000 );
         }
-        catch ( InterruptedException e )
-        {
-          e.printStackTrace();
-          Thread.currentThread().interrupt();
-        }
-          
+      }
+      catch ( InterruptedException e )
+      {
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      }
+
       while (true) {
         analyze();
         updateEffect();

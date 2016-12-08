@@ -2,6 +2,8 @@ import java.util.Arrays;
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 
+
+
 ColorPicker cp;
 AudioProcessor ap;
 
@@ -10,12 +12,14 @@ int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
 
+
+
 void setup() {
   loading++;
   size(1000, 700, P3D);
   background(255);
   frameRate(240);
-  
+  rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
   ap = new AudioProcessor(1000);
@@ -25,11 +29,24 @@ void setup() {
 
 void draw() {
   background(0);
-  if(loading != 0){
-      textAlign(CENTER);
-      textSize(42);
-      text("Loading...", width/2.0, height/2.0);
+  if (loading != 0) {
+    println("loading counter: ", loading);
+    textAlign(CENTER);
+    textSize(42);
+    text("Loading...", width/2.0, height/2.0);
   } else {
     ap.display();
+  }
+}
+
+
+String displayMode = "test";
+void mouseClicked() {
+  if (displayMode == "test") {
+    displayMode = "live";
+    println("mouse event");
+  } else {
+    println("mouse event revert");
+    displayMode = "test";
   }
 }

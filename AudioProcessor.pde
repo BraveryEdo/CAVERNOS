@@ -3,7 +3,7 @@ public class AudioProcessor {
   Minim minim;
   AudioInput in;
   FFT rfft, lfft;
-  Band sub, low, mid, upper, high, bleeder;
+  Band sub, low, mid, upper, high, all;
   Band[] bands;
 
   int logicRate, lastLogicUpdate;
@@ -25,12 +25,13 @@ public class AudioProcessor {
   int[] midRange = {floor(bottomLimit[2]*mult), floor(topLimit[2]*mult)};
   int[] upperRange = {floor(bottomLimit[3]*mult), floor(topLimit[3]*mult)};
   int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
+  int[] allRange = {floor(bottomLimit[0]*mult), floor(topLimit[4]*mult)};
 
   public AudioProcessor(int lr) {
     loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
-    
+
     rfft = new FFT(in.bufferSize(), in.sampleRate());
     lfft = new FFT(in.bufferSize(), in.sampleRate());
 
@@ -78,36 +79,62 @@ public class AudioProcessor {
     float[][] mid2 = specResize(midArr, newSize);
     float[][] upper2 = specResize(upperArr, newSize);
     float[][] high2 = specResize(highArr, newSize);
+    float[][] all2 = specResize(magnitude, newSize);
 
     sub = new Band(sub2, hzMult, subRange, newSize, "sub");
     low = new Band(low2, hzMult, lowRange, newSize, "low");
     mid = new Band(mid2, hzMult, midRange, newSize, "mid");
     upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
     high = new Band(high2, hzMult, highRange, newSize, "high");
+    all = new Band(all2, hzMult, allRange, newSize, "all");
 
-    bands = new Band[5];
+    bands = new Band[6];
     bands[0] = sub;
     bands[1] = low;
     bands[2] = mid;
     bands[3] = upper;
     bands[4] = high;
-
+    bands[5] = all;
 
     logicThread.start();
     println("audioProcessor started");
     loading--;
   }
-  
-  void display(){
-    for (int i = 0; i < bands.length; i++){    
-      noFill();
-      stroke(255);
-      //ap.bands[i].display(0, 0, width, height);
-      rect(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
-      bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+
+  void display() {
+    if (displayMode == "test") {
+      for (int i = bands.length-1; i >=0; i--) {
+        if (bands[i].name == "all") {
+          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
+        } else if (bands[i].name == "low") {
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+        } else if (bands[i].name == "mid") {
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+        } else if (bands[i].name == "upper") {
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+        } else if (bands[i].name == "high") {
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+        }
+      }
+    } else {
+      for (int i = bands.length-1; i >=0; i--) {
+        if (bands[i].name == "all") {
+          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
+        } else {
+          float x = width/2.0;
+          float w = height/4.0;
+          float y = height-w*(i-.5);
+          float h = width/ap.bands.length;
+
+          bands[i].display(x+h/2.0, y, h, w, 0, 0, PI/2);
+          bands[i].display(x-h/2.0, y, h, w, PI, 0, -PI/2);
+        }
+      }
     }
   }
   
+
+
 
   //reduce each channel's size to n
   public float[][] specResize(float[][] in, int size) {
@@ -181,37 +208,39 @@ public class AudioProcessor {
         }
 
         float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-                            Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-                            Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
+          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
 
         float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-                            Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-                            Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
+          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
 
         float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-                            Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-                            Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
+          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
 
         float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-                              Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-                              Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
+          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
 
         float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-                             Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-                             Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+          Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
+          Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
 
         int newSize = 64;                     
         float[][] sub2 = specResize(subArr, newSize);
         float[][] low2 = specResize(lowArr, newSize);
         float[][] mid2 = specResize(midArr, newSize);
         float[][] upper2 = specResize(upperArr, newSize);
-        float[][] high2 = specResize(highArr, newSize);               
+        float[][] high2 = specResize(highArr, newSize);   
+        float[][] all2 = specResize(magnitude, newSize);
 
         sub.stream(sub2);
         low.stream(low2);
         mid.stream(mid2);
         upper.stream(upper2);
         high.stream(high2);
+        all.stream(all2);
 
         //------------
         //framelimiter
