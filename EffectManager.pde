@@ -35,9 +35,9 @@ public class EffectManager {
       for (int j = 0; j < numProperties; j++) {
         analysisHist[i][j] = 0.0;
       }
-      for(int c = 0; i < channels; i++){
-        for(int j = 0; j < size; j++){
-           sortedSpecIndex[i][c][j] = 0; 
+      for (int c = 0; i < channels; i++) {
+        for (int j = 0; j < size; j++) {
+          sortedSpecIndex[i][c][j] = 0;
         }
       }
     }
@@ -49,8 +49,8 @@ public class EffectManager {
 
     hzMult = hz;
     offset = off;
-    
-   switch(effectName) {
+
+    switch(effectName) {
     case "all":
       e = new EqRing(size, offset, hzMult);
       break;
@@ -73,7 +73,7 @@ public class EffectManager {
       e = new DefaultVis(size, offset, hzMult);
       break;
     }
-    
+
     println("effectManager for '" + name + "' loaded");
     loading--;
   }
@@ -91,31 +91,47 @@ public class EffectManager {
     analysisHist[0][1] = avg;
     analysisHist[0][2] = maxInd;
     sortedSpecIndex[0] = sortedSpecInd;
-    e.streamSpec(spec);
+    e.streamSpec(spec, sortedSpecInd);
     e.setMaxIndex(maxInd);
-    
-    mixN(7, sortedSpecInd);
-    
+
+    mixN(5, sortedSpecInd);
+
     colorHist[0] = picked;
   }
-  
-  private void mixN(int n, int[][] sorted){
+
+  protected void switchEffect(String newName) {
+    switch(newName) {
+    case "mirrored":
+      e = new MirroredDefaultVis(size, offset, hzMult);
+      break;
+    case "mirroredALL":
+      e = new MirroredDefaultVis(size, offset, hzMult);
+      break;
+    case "default":
+      e = new DefaultVis(size, offset, hzMult);
+      break;
+    default:
+      e = new DefaultVis(size, offset, hzMult);
+      break;
+    }
+  }
+
+  private void mixN(int n, int[][] sorted) {
     color colorMixer = e.calcColor(sorted[1][0]);
-    float rollInt = history[0][1][sorted[1][0]];
-    for(int i = 1 ; i < min(n, size); i++){
-      colorMixer = lerpColor(colorMixer, e.calcColor(sorted[1][i]), history[0][1][sorted[1][i]]/rollInt);
-      rollInt += history[0][1][sorted[1][i]];
-      
+    float rollingIntensity = history[0][1][sorted[1][0]];
+    for (int i = 1; i < min(n, size); i++) {
+      colorMixer = lerpColor(colorMixer, e.calcColor(sorted[1][i]), history[0][1][sorted[1][i]]/rollingIntensity);
+      rollingIntensity += history[0][1][sorted[1][i]];
     }
     picked = colorMixer;
-    e.setColor(picked); 
+    e.setColor(picked);
   }
 
 
   void display(float left, float top, float right, float bottom) {
-    e.display(left, top,right, bottom);
+    e.display(left, top, right, bottom);
   }
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-   e.display(x, y, h, w, rx, ry, rz); 
+    e.display(x, y, h, w, rx, ry, rz);
   }
 }

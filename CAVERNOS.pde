@@ -40,13 +40,27 @@ void draw() {
 }
 
 
-String displayMode = "test";
+String displayMode = "default";
 void mouseClicked() {
-  if (displayMode == "test") {
-    displayMode = "live";
-    println("mouse event");
+  if (displayMode == "default") {
+    displayMode = "mirrored";
+    for(Band b: ap.bands){
+      if(b.name != "all"){
+        b.effectManager.switchEffect(displayMode);
+      } else {
+       // b.effectManager.switchEffect(displayMode+"ALL");
+      }
+    }
+    println("mirrored mode");
   } else {
-    println("mouse event revert");
-    displayMode = "test";
+    displayMode = "default";
+    for(Band b: ap.bands){
+      if(b.name != "all"){
+        b.effectManager.switchEffect(displayMode);
+      } else {
+       // b.effectManager.switchEffect(displayMode+"ALL");
+      }
+    }
+    println("default mode");
   }
 }

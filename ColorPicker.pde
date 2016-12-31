@@ -11,7 +11,7 @@ public class ColorPicker {
 
   public ColorPicker() {
     loading++;
-    int octaves = 12;
+    int octaves = 15;
     freqs = new float[octaves*baseFreqs.length];
 
     for (int i = 0; i < octaves; i++) {

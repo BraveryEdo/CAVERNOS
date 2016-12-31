@@ -7,7 +7,7 @@ public class AudioProcessor {
   Band[] bands;
 
   int logicRate, lastLogicUpdate;
-  int sampleRate = 8192;
+  int sampleRate = 8192/4;
   int specSize = 2048;
   int histDepth = 16;
   float[][] magnitude;
@@ -34,6 +34,9 @@ public class AudioProcessor {
 
     rfft = new FFT(in.bufferSize(), in.sampleRate());
     lfft = new FFT(in.bufferSize(), in.sampleRate());
+    
+    rfft.logAverages(22,6);
+    lfft.logAverages(22,6);
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
@@ -102,7 +105,7 @@ public class AudioProcessor {
   }
 
   void display() {
-    if (displayMode == "test") {
+    if (displayMode == "default") {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
@@ -115,7 +118,6 @@ public class AudioProcessor {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
         } else {
-          println(i);
           float x = width/2.0;
           float w = height/ap.bands.length;
           float y = height-w*(i+.5);

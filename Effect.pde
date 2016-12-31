@@ -7,6 +7,7 @@ abstract class Effect {
   float hzMult;
   int maxIndex;
   float[][] spec;
+  int[][] sorted;
 
   Effect(String n, String t, int s, int o, float h) {
     setName(n);
@@ -17,6 +18,7 @@ abstract class Effect {
     setHzMult(h);
     setMaxIndex(0);
     spec = new float[channels][size];
+    sorted = new int[channels][size];
     println("effect '" + name + "' for range type '" + type + "' loaded");
   }
 
@@ -53,7 +55,7 @@ abstract class Effect {
   public void setMaxIndex(int i) { 
     this.maxIndex = i;
   }
-  public void streamSpec(float[][] s) { 
+  public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
   }
 }
@@ -69,7 +71,7 @@ public class DefaultVis extends Effect {
     float w = (right-left);
     float h = (bottom-top);
 
-    display(left + w/2.0, bottom - h/2.0, h, w, 0, 0, 0);
+    this.display(left + w/2.0, bottom - h/2.0, h, w, 0, 0, 0);
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
@@ -84,6 +86,38 @@ public class DefaultVis extends Effect {
       rotateY(ry);
       rotateZ(rz);
       line( (i + .5)*x_scale - w/2.0, h/2.0, (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+      popMatrix();
+    }
+  }
+}
+
+
+public class MirroredDefaultVis extends Effect {
+
+  MirroredDefaultVis(int size, int offset, float hzMult) {
+    super("MirroredDefault", "all", size, offset, hzMult);
+  }
+
+  void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0, bottom - h/2.0, h, w, 0, 0, 0);
+  }
+
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+
+    stroke(picked);
+    for (int i = 0; i < size; i++) {
+      noFill();
+      pushMatrix();
+      translate(x, y, 0);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      line((i + .5)*x_scale - w/2.0, h/2.0 + min(spec[1][i], h),
+           (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
       popMatrix();
     }
   }
@@ -109,6 +143,27 @@ public class SubVis extends Effect {
   }
 }
 
+public class WaveForm extends Effect {
+  WaveForm(int size, int offset, float hzMult) {
+    super("WaveForm visualizer", "all", size, offset, hzMult);
+  }
+
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    
+    
+    
+  }
+
+  void display(float left, float top, float right, float bottom) {
+
+    float _x = left+(right - left)/2.0;
+    float _y = top-(top - bottom)/2.0;
+    
+    this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
+    
+  }
+}
+
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult) {
     super("EqRing visualizer", "all", size, offset, hzMult);
@@ -121,14 +176,9 @@ public class EqRing extends Effect {
   int nbars = size;
   color lastPicked = picked;
 
-  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-  }
-
-  void display(float left, float top, float right, float bottom) {
-
+  void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
+    
     float t = millis();
-    float _x = left+(right - left)/2.0;
-    float _y = top-(top - bottom)/2.0;
     float gmax = spec[1][maxIndex];
     float s = sin((t+(gmax/25))*.0002);
 
@@ -138,7 +188,11 @@ public class EqRing extends Effect {
 
     stroke(picked);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    bars(_x, _y, i_rad, s);
+    if(displayMode == "mirrored"){
+      MirroredBars(_x, _y, i_rad, s);
+    } else {
+      bars(_x, _y, i_rad, s);
+    }
 
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
@@ -184,6 +238,15 @@ public class EqRing extends Effect {
     lastPicked = lerpColor(picked, lastPicked, .8);
   }
 
+  void display(float left, float top, float right, float bottom) {
+
+    float _x = left+(right - left)/2.0;
+    float _y = top-(top - bottom)/2.0;
+    
+    this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
+    
+  }
+
   void bars(float _x, float _y, float low, float rot) {
 
     float angle = TWO_PI / nbars;
@@ -218,6 +281,54 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
+  void MirroredBars(float _x, float _y, float low, float rot) {
+
+    float angle = TWO_PI / (nbars *2);
+    float a = 0;
+    int bar_height = 5;
+
+    float s = (low*PI/ (nbars * 2));
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    for (int i = 0; i < nbars; i ++) {
+      float r = 128;
+      float b = 128;
+      float g = 128;
+      float z = random(5); 
+      pushMatrix();
+      rotateZ(a);
+      for (int j = 0; j < spec[1][(nbars-1)-i]; j+= bar_height) {
+        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
+          break;
+        }
+        //stroke(r-j, b-j, g-j, 120+z*j);
+        stroke(lerpColor(calcColor((nbars-1)-i), color(r-j, b-j, g-j, 120+z*j), .7));
+        rect(0, s+low + j, s, s*2/3);
+      }
+      popMatrix();
+      
+      pushMatrix();
+      rotateZ(PI+a);
+      for (int j = 0; j < spec[1][i]; j+= bar_height) {
+        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
+          break;
+        }
+        //stroke(r-j, b-j, g-j, 120+z*j);
+        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7));
+        rect(0, s+low + j, s, s*2/3);
+      }
+      popMatrix();
+      
+      a+= angle;
+    }
+    popMatrix();
+  }
+
 
   //creates a ring of outward facing triangles
   void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
@@ -225,10 +336,6 @@ public class EqRing extends Effect {
     // _n = number of triangles in ring
     // _r = radius of ring (measured to tri center point)
     // ori = orientation true = out, false = in
-    //if (testing) {
-    //  println("\nring: ", _x, ", ", _y, " #", _n, " radius:", _r);
-    //}
-
     float rads = 0;
     float s = (_r*PI/_n)*.9;
     float diff = TWO_PI/_n; 
@@ -250,10 +357,6 @@ public class EqRing extends Effect {
   // _s = triangle size (edge length in pixels)
   // ori = determines if it starts pointed up or down
   void tri(float _x, float _y, float _z, float _r, float _s, boolean ori) {
-
-    //if (testing) {
-    //  println("triangle: ", _x, ", ", _y, " rot: ", (int) _r*360/PI, " s: ", _s, "ori: ", ori);
-    //}
 
     pushMatrix();
     translate(_x, _y, _z);
