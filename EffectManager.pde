@@ -117,7 +117,7 @@ public class EffectManager {
   }
 
   private void mixN(int n, int[][] sorted) {
-    color colorMixer = e.calcColor(sorted[1][0]);
+    color colorMixer = e.calcColor(sorted[1][0]); //= (sorted[1][0] != 0) ? e.calcColor(sorted[1][0]) : color(128,128,128,255); 
     float rollingIntensity = history[0][1][sorted[1][0]];
     for (int i = 1; i < min(n, size); i++) {
       colorMixer = lerpColor(colorMixer, e.calcColor(sorted[1][i]), history[0][1][sorted[1][i]]/rollingIntensity);

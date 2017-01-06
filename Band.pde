@@ -75,40 +75,43 @@ public class Band {
     avg = tavg;
     maxIntensity = tmax;
     maxInd = imax;
+    
+    fwdRevBubble(sortedSpec, sortedSpecIndex);
+  }
 
-    //reversing bubble sort to get sorted spec (descending order)
+  private void fwdRevBubble(float[][] ss, int[][] ssi) {
 
     boolean swapped = false;
     do {
+      //forward+reverse bubble sort to get sorted spec (descending order)
       swapped = false;
-      for (int i = 0; i < spec[1].length - 2; i++) {
+      int ssEnd = ss[1].length - 2;
+      for (int i = 0; i < ssEnd; i++) {
         for (int c = 0; c < channels; c++) {
-          if (sortedSpec[c][i] < sortedSpec[c][i+1]) {
-            float t = sortedSpec[c][i];
-            sortedSpec[c][i] = sortedSpec[c][i+1];
-            sortedSpec[c][i+1] = t;
-            int t2 = sortedSpecIndex[c][i];
-            sortedSpecIndex[c][i] = sortedSpecIndex[c][i+1];
-            sortedSpecIndex[c][i+1] = t2;
+          if (ss[c][i] < ss[c][i+1]) {
+            float t = ss[c][i];
+            ss[c][i] = ss[c][i+1];
+            ss[c][i+1] = t;
+            int t2 = ssi[c][i];
+            ssi[c][i] = ssi[c][i+1];
+            ssi[c][i+1] = t2;
             swapped = true;
           }
-        }
-      }
-      for (int i =  spec[1].length - 2; i > 0; i--) {
-        for (int c = 0; c < channels; c++) {
-          if (sortedSpec[c][i] < sortedSpec[c][i+1]) {
-            float t = sortedSpec[c][i];
-            sortedSpec[c][i] = sortedSpec[c][i+1];
-            sortedSpec[c][i+1] = t;
-            int t2 = sortedSpecIndex[c][i];
-            sortedSpecIndex[c][i] = sortedSpecIndex[c][i+1];
-            sortedSpecIndex[c][i+1] = t2;
+          int j = ssEnd - i;
+          if (ss[c][j] < ss[c][j+1]) {
+            float t = ss[c][j];
+            ss[c][j] = ss[c][j+1];
+            ss[c][j+1] = t;
+            int t2 = ssi[c][j];
+            ssi[c][j] = ssi[c][j+1];
+            ssi[c][j+1] = t2;
             swapped = true;
           }
         }
       }
     } while (swapped);
   }
+
 
   public void updateEffect() {
     //copies are made to fix a null pointer error
@@ -125,9 +128,9 @@ public class Band {
   public void display(float left, float top, float right, float bottom) {
     effectManager.display(left, top, right, bottom);
   }
-  
+
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-   effectManager.display(x, y, h, w, rx, ry, rz); 
+    effectManager.display(x, y, h, w, rx, ry, rz);
   }
 
   Thread bandAnalysisThread = new Thread(new Runnable() {

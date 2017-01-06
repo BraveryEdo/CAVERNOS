@@ -106,10 +106,10 @@ public class MirroredDefaultVis extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/size;   
+    float x_scale = w/(size/2);   
 
     stroke(picked);
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < (size/2); i++) {
       noFill();
       pushMatrix();
       translate(x, y, 0);
@@ -173,7 +173,7 @@ public class EqRing extends Effect {
   //number of triangles in the outer ring
   int num_tri_oring = 50;
   float pad = 25;
-  int nbars = size;
+  int nbars = size/2;
   color lastPicked = picked;
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
@@ -251,7 +251,7 @@ public class EqRing extends Effect {
 
     float angle = TWO_PI / nbars;
     float a = 0;
-    int bar_height = 5;
+    int bar_height = 15;
 
     float s = (low*PI/nbars)*.8;
     rectMode(CENTER);
@@ -266,9 +266,9 @@ public class EqRing extends Effect {
       float b = random(255);
       float g = random(255);
       float z = random(5); 
-      for (int j = 0; j < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j + bar_height/2 < spec[1][i]; j+= bar_height) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
@@ -283,11 +283,11 @@ public class EqRing extends Effect {
 
   void MirroredBars(float _x, float _y, float low, float rot) {
 
-    float angle = TWO_PI / (nbars *2);
+    float angle = TWO_PI / nbars;
     float a = 0;
-    int bar_height = 5;
+    int bar_height = 15;
 
-    float s = (low*PI/ (nbars * 2));
+    float s = (low*PI/ nbars);
     rectMode(CENTER);
 
     pushMatrix();
@@ -299,8 +299,8 @@ public class EqRing extends Effect {
       float g = 128;
       float z = random(5); 
       pushMatrix();
-      rotateZ(a);
-      for (int j = 0; j < spec[1][(nbars-1)-i]; j+= bar_height) {
+      rotateZ(PI+a);
+      for (int j = 0; j + bar_height/2 < spec[1][(nbars-1)-i]; j+= bar_height) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
           break;
@@ -313,7 +313,7 @@ public class EqRing extends Effect {
       
       pushMatrix();
       rotateZ(PI+a);
-      for (int j = 0; j < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j + bar_height/2 < spec[1][i]; j+= bar_height) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
           break;
