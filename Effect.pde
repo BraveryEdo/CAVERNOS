@@ -137,9 +137,9 @@ public class MirroredDefaultVis extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/(size/2);   
+    float x_scale = w/size;   
 
-    for (int i = 0; i < (size/2); i++) {
+    for (int i = 0; i < size; i++) {
       if (gradient && colorIndex != 0) {
         color[] c = cp.getColors();
         color current, prev, next;
