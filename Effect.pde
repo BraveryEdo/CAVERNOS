@@ -8,6 +8,8 @@ abstract class Effect {
   int maxIndex;
   float[][] spec;
   int[][] sorted;
+  int colorIndex;
+  boolean gradient;
 
   Effect(String n, String t, int s, int o, float h) {
     setName(n);
@@ -19,6 +21,8 @@ abstract class Effect {
     setMaxIndex(0);
     spec = new float[channels][size];
     sorted = new int[channels][size];
+    colorIndex = cp.getIndex(n);
+    gradient = false;
     println("effect '" + name + "' for range type '" + type + "' loaded");
   }
 
@@ -41,6 +45,7 @@ abstract class Effect {
   }
   public color pickColor() {
     this.picked = cp.pick(hzMult * (maxIndex * size + offset)); 
+    cp.setColor(name, this.picked);
     return picked;
   }
   public void setSize(int s) { 
@@ -58,7 +63,12 @@ abstract class Effect {
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
   }
+  public void toggleGradient() { 
+    gradient = !gradient;
+  }
 }
+
+
 
 
 public class DefaultVis extends Effect {
@@ -77,8 +87,29 @@ public class DefaultVis extends Effect {
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     float x_scale = w/size;   
 
-    stroke(picked);
     for (int i = 0; i < size; i++) {
+      if (gradient && colorIndex != 0) {
+        color[] c = cp.getColors();
+        color current, prev, next;
+        current = c[colorIndex];
+        if (colorIndex == 1) {
+          prev = c[cp.audioRanges -1];
+          next = c[colorIndex + 1];
+        } else if (colorIndex == cp.audioRanges - 1) {
+          prev = c[colorIndex-1];
+          next = c[1];
+        } else {
+          prev = c[colorIndex-1];
+          next = c[colorIndex + 1];
+        }
+        if (i < size / 2) {
+          stroke(lerpColor(prev, current, i/(size/2)));
+        } else {
+          stroke(lerpColor(current, next, (i-(size/2))/(size/2)));
+        }
+      } else {
+        stroke(picked);
+      }
       noFill();
       pushMatrix();
       translate(x, y, 0);
@@ -108,16 +139,37 @@ public class MirroredDefaultVis extends Effect {
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     float x_scale = w/(size/2);   
 
-    stroke(picked);
     for (int i = 0; i < (size/2); i++) {
+      if (gradient && colorIndex != 0) {
+        color[] c = cp.getColors();
+        color current, prev, next;
+        current = c[colorIndex];
+        if (colorIndex == 1) {
+          prev = c[cp.audioRanges -1];
+          next = c[colorIndex + 1];
+        } else if (colorIndex == cp.audioRanges - 1) {
+          prev = c[colorIndex-1];
+          next = c[1];
+        } else {
+          prev = c[colorIndex-1];
+          next = c[colorIndex + 1];
+        }
+        if (i < size / 2) {
+          stroke(lerpColor(prev, current, i/(size/2)));
+        } else {
+          stroke(lerpColor(current, next, (i-(size/2))/(size/2)));
+        }
+      } else {
+        stroke(picked);
+      }
       noFill();
       pushMatrix();
       translate(x, y, 0);
       rotateX(rx);
       rotateY(ry);
       rotateZ(rz);
-      line((i + .5)*x_scale - w/2.0, h/2.0 + min(spec[1][i], h),
-           (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+      line((i + .5)*x_scale - w/2.0, h/2.0 + min(spec[1][i], h), 
+        (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
       popMatrix();
     }
   }
@@ -149,18 +201,14 @@ public class WaveForm extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    
-    
-    
   }
 
   void display(float left, float top, float right, float bottom) {
 
     float _x = left+(right - left)/2.0;
     float _y = top-(top - bottom)/2.0;
-    
+
     this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
-    
   }
 }
 
@@ -177,7 +225,7 @@ public class EqRing extends Effect {
   color lastPicked = picked;
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-    
+
     float t = millis();
     float gmax = spec[1][maxIndex];
     float s = sin((t+(gmax/25))*.0002);
@@ -188,7 +236,7 @@ public class EqRing extends Effect {
 
     stroke(picked);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    if(displayMode == "mirrored"){
+    if (displayMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
       bars(_x, _y, i_rad, s);
@@ -242,9 +290,8 @@ public class EqRing extends Effect {
 
     float _x = left+(right - left)/2.0;
     float _y = top-(top - bottom)/2.0;
-    
+
     this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
-    
   }
 
   void bars(float _x, float _y, float low, float rot) {
@@ -310,7 +357,7 @@ public class EqRing extends Effect {
         rect(0, s+low + j, s, s*2/3);
       }
       popMatrix();
-      
+
       pushMatrix();
       rotateZ(PI+a);
       for (int j = 0; j + bar_height/2 < spec[1][i]; j+= bar_height) {
@@ -323,7 +370,7 @@ public class EqRing extends Effect {
         rect(0, s+low + j, s, s*2/3);
       }
       popMatrix();
-      
+
       a+= angle;
     }
     popMatrix();

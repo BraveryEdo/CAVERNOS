@@ -7,7 +7,7 @@ public class AudioProcessor {
   Band[] bands;
 
   int logicRate, lastLogicUpdate;
-  int sampleRate = 8192/4;
+  int sampleRate = 8192/2;
   int specSize = 2048;
   int histDepth = 16;
   float[][] magnitude;

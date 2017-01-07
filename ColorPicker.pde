@@ -8,7 +8,11 @@ public class ColorPicker {
   //color picking based off the wavelength that a certain color is in light based on a base 432hz tuning, example drawn from: http://www.roelhollander.eu/en/tuning-frequency/sound-light-colour/, consider this for later: http://www.fourmilab.ch/documents/specrend/
   //                    C0,       C0#,     D0,      D0#,     E0,      F0,     F0#,      G0,       G0#,     A0,      A0#,     B0    
   color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
-
+  
+  
+  int histDepth = 16;
+  int audioRanges = 6; //all, sub, low, mid, upper, high
+  color[][] colors;
   public ColorPicker() {
     loading++;
     int octaves = 15;
@@ -20,6 +24,8 @@ public class ColorPicker {
       }
     }
     
+    colors = new color[histDepth][audioRanges];
+
     println("color picker loaded");
     loading--;
   }
@@ -41,8 +47,52 @@ public class ColorPicker {
     }
     return picked;
   }
+  
+  public void setColor(String n, color c){
+    int ind = getIndex(n);
+    for(int i = histDepth - 1; i > 0; i--){
+      colors[i][ind] = colors[i-1][ind];
+    }
+    colors[0][ind] = c;
+  }
 
-//not really the right place to do this, I can build it out in the effect manager later
+  public color[] getColors(){
+    return colors[0];
+  }
+  
+  public color[][] getColorHistory(){
+     return colors; 
+  }
+
+  public int getIndex(String n) {
+    int i = 0;
+    switch(n) {
+    case "all":
+      i = 0;
+      break;
+    case "sub":
+      i = 1;
+      break;
+    case "low":
+      i = 2;
+      break;
+    case "mid":
+      i = 3;
+      break;
+    case "upper":
+      i = 4;
+      break;
+    case "high":
+      i = 5;
+      break;
+    default:
+      i = 0;
+      break;
+    }
+    return i;
+  }
+
+  //not really the right place to do this, I can build it out in the effect manager later
   //public color multiMix(float[] hzs, float[] mags) {
   //  if (hzs.length > 1) {
   //    color mixer = pick(hzs[0]);
