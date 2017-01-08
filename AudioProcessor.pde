@@ -7,15 +7,25 @@ public class AudioProcessor {
   Band[] bands;
 
   int logicRate, lastLogicUpdate;
-  int sampleRate = 8192/2;
+  int sampleRate = 8192/4;
   int specSize = 2048;
   int histDepth = 16;
   float[][] magnitude;
   float[][][] history;
 
-  //ranges are based on a sample frequency of 8192 (2^13) 
-  float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
-  float[] topLimit = {sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8, sampleRate/4};
+  ////ranges are based on a sample frequency of 8192 (2^13) 
+  //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
+  //float[] topLimit = {sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8, sampleRate/4};
+
+  //ranges are based on a sample frequency of 8192/4 (2^9) 
+  float[] bottomLimit = {0, sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32};
+  float[] topLimit = {sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16};
+
+
+
+
+  //float[] bottomLimit = {0, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16};
+  //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
 
   float mult = float(specSize)/float(sampleRate);
   float hzMult = float(sampleRate)/float(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
@@ -28,15 +38,20 @@ public class AudioProcessor {
   int[] allRange = {floor(bottomLimit[0]*mult), floor(topLimit[4]*mult)};
 
   public AudioProcessor(int lr) {
+    //println("ranges");
+    //for (int i = 0; i < bottomLimit.length; i++) {
+    //  println(bottomLimit[i] + ", " + topLimit[i]);
+    //}
+
     loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
 
     rfft = new FFT(in.bufferSize(), in.sampleRate());
     lfft = new FFT(in.bufferSize(), in.sampleRate());
-    
-    rfft.logAverages(22,6);
-    lfft.logAverages(22,6);
+
+    rfft.logAverages(22, 6);
+    lfft.logAverages(22, 6);
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
@@ -77,12 +92,17 @@ public class AudioProcessor {
       Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
 
     int newSize = 64;                     
-    float[][] sub2 = specResize(subArr, newSize);
-    float[][] low2 = specResize(lowArr, newSize);
-    float[][] mid2 = specResize(midArr, newSize);
-    float[][] upper2 = specResize(upperArr, newSize);
-    float[][] high2 = specResize(highArr, newSize);
-    float[][] all2 = specResize(magnitude, newSize);
+    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+    float[][] sub2 = specResize(subArr, newSize, subLast);
+    float[][] low2 = specResize(lowArr, newSize, lowLast);
+    float[][] mid2 = specResize(midArr, newSize, midLast);
+    float[][] upper2 = specResize(upperArr, newSize, upperLast);
+    float[][] high2 = specResize(highArr, newSize, null);
+    float[][] all2 = specResize(magnitude, newSize, null);
 
     sub = new Band(sub2, hzMult, subRange, newSize, "sub");
     low = new Band(low2, hzMult, lowRange, newSize, "low");
@@ -129,17 +149,18 @@ public class AudioProcessor {
       }
     }
   }
-  
+
 
 
 
   //reduce each channel's size to n
-  public float[][] specResize(float[][] in, int size) {
+  public float[][] specResize(float[][] in, int size, float[] last) {
     if (in[1].length > size) {
       //scale down size
       float[][] t = new float[channels][size];
       int n = in[1].length/size;
       for (int i = 0; i < size; i ++) {
+        //left/mid/right channels
         float l = 0, m = 0, r = 0;
         for (int j = 0; j < n; j++) {
           l += in[0][i*n + j];
@@ -156,12 +177,13 @@ public class AudioProcessor {
     } else {
       //scale up size
       float[][] t = new float[channels][size];
-      int n = size/in[1].length;
+      float n = float(size)/float(in[1].length);
       int count = 0;
       for (int i = 0; i < in[1].length - 1; i ++) {
+        //left/mid/right channels
         float l = in[0][i], m = in[1][i], r = in[2][i];
         for (int j = 0; j < n; j++) {
-          float mix = float(j)/float(n);
+          float mix = float(j)/n;
           l = lerp(l, in[0][i+1], mix);
           m = lerp(m, in[1][i+1], mix);
           r = lerp(r, in[2][i+1], mix);
@@ -172,18 +194,30 @@ public class AudioProcessor {
           count++;
         }
       }
-      int len = in[1].length;
-      t[0][size-2] = in[0][len -1];
-      t[1][size-2] = in[1][len -1];
-      t[2][size-2] = in[2][len -1];
+      
+      //interpolate between the last given data point and the first point of the next section, if none is present then fade out
+      int len = in[1].length-1;
+      //left/mid/right channels
+      float l = in[0][len], m = in[1][len], r = in[2][len];
+      if(last == null){
+       last = new float[]{0,0,0}; 
+      }
+      for (int j = 0; j < n; j++) {
+        float mix = float(j)/n;
+        l = lerp(l, last[0], mix);
+        m = lerp(m, last[1], mix);
+        r = lerp(r, last[2], mix);
 
-      t[0][size-1] = in[0][len -1] + (t[0][size - 3] - in[0][len -1]);
-      t[1][size-1] = in[1][len -1] + (t[1][size - 3] - in[1][len -1]);
-      t[2][size-1] = in[2][len -1] + (t[2][size - 3] - in[2][len -1]);  
+        t[0][count] = l;
+        t[1][count] = m;
+        t[2][count] = r;
+        count++;
+      }
 
       return t;
     }
   }
+
 
   Thread logicThread = new Thread(new Runnable() {
     public void run() {
@@ -224,13 +258,18 @@ public class AudioProcessor {
           Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
           Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
 
-        int newSize = 64;                     
-        float[][] sub2 = specResize(subArr, newSize);
-        float[][] low2 = specResize(lowArr, newSize);
-        float[][] mid2 = specResize(midArr, newSize);
-        float[][] upper2 = specResize(upperArr, newSize);
-        float[][] high2 = specResize(highArr, newSize);   
-        float[][] all2 = specResize(magnitude, newSize);
+        int newSize = 64;
+        float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+        float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+        float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+        float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+        float[][] sub2 = specResize(subArr, newSize, subLast);
+        float[][] low2 = specResize(lowArr, newSize, lowLast);
+        float[][] mid2 = specResize(midArr, newSize, midLast);
+        float[][] upper2 = specResize(upperArr, newSize, upperLast);
+        float[][] high2 = specResize(highArr, newSize, null);   
+        float[][] all2 = specResize(magnitude, newSize, null);
 
         sub.stream(sub2);
         low.stream(low2);

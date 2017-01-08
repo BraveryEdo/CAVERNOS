@@ -21,7 +21,7 @@ abstract class Effect {
     setMaxIndex(0);
     spec = new float[channels][size];
     sorted = new int[channels][size];
-    colorIndex = cp.getIndex(n);
+    colorIndex = cp.getIndex(t);
     gradient = false;
     println("effect '" + name + "' for range type '" + type + "' loaded");
   }
@@ -45,7 +45,7 @@ abstract class Effect {
   }
   public color pickColor() {
     this.picked = cp.pick(hzMult * (maxIndex * size + offset)); 
-    cp.setColor(name, this.picked);
+    cp.setColor(type, this.picked);
     return picked;
   }
   public void setSize(int s) { 
@@ -102,10 +102,12 @@ public class DefaultVis extends Effect {
           prev = c[colorIndex-1];
           next = c[colorIndex + 1];
         }
-        if (i < size / 2) {
-          stroke(lerpColor(prev, current, i/(size/2)));
+        if (i < size / 3) {
+          stroke(lerpColor(prev, current, i/size));
+        } else if (i < 2*size/3){
+          stroke(current);
         } else {
-          stroke(lerpColor(current, next, (i-(size/2))/(size/2)));
+          stroke(lerpColor(current, next, (i-(size/2))/size));
         }
       } else {
         stroke(picked);

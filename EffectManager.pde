@@ -53,24 +53,31 @@ public class EffectManager {
     switch(effectName) {
     case "all":
       e = new EqRing(size, offset, hzMult);
+      e.type="all";
       break;
     case "sub": 
       e = new DefaultVis(size, offset, hzMult);
+      e.type="sub";
       break;
     case "low": 
       e = new DefaultVis(size, offset, hzMult);
+      e.type="low";
       break;
     case "mid": 
       e = new DefaultVis(size, offset, hzMult);
+      e.type="mid";
       break;
     case "upper": 
       e = new DefaultVis(size, offset, hzMult);
+      e.type="upper";
       break;
     case "high":
       e = new DefaultVis(size, offset, hzMult);
+      e.type="high";
       break;
     default:
       e = new DefaultVis(size, offset, hzMult);
+      e.type="all";
       break;
     }
 
