@@ -14,7 +14,7 @@ public class EffectManager {
   color picked;
   Effect e;
 
-  public EffectManager(String name, int h, int s, int analysisProps, float hz, int off) {
+  public EffectManager(String name,int h, int s, int analysisProps, float hz, int off) {
     loading++;
     effectName = name;
     size = s;
@@ -50,33 +50,33 @@ public class EffectManager {
     hzMult = hz;
     offset = off;
 
-    switch(effectName) {
+    switch(name) {
     case "all":
-      e = new EqRing(size, offset, hzMult);
-      e.type="all";
+      e = new EqRing(size, offset, hzMult, name);
+      e.type=name;
       break;
     case "sub": 
-      e = new DefaultVis(size, offset, hzMult);
-      e.type="sub";
+      e = new DefaultVis(size, offset, hzMult, name);
+      e.type=name;
       break;
     case "low": 
-      e = new DefaultVis(size, offset, hzMult);
-      e.type="low";
+      e = new DefaultVis(size, offset, hzMult, name);
+      e.type=name;
       break;
     case "mid": 
-      e = new DefaultVis(size, offset, hzMult);
-      e.type="mid";
+      e = new DefaultVis(size, offset, hzMult, name);
+      e.type=name;
       break;
     case "upper": 
-      e = new DefaultVis(size, offset, hzMult);
-      e.type="upper";
+      e = new DefaultVis(size, offset, hzMult, name);
+      e.type=name;
       break;
     case "high":
-      e = new DefaultVis(size, offset, hzMult);
-      e.type="high";
+      e = new DefaultVis(size, offset, hzMult, name);
+      e.type=name;
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult);
+      e = new DefaultVis(size, offset, hzMult, name);
       e.type="all";
       break;
     }
@@ -109,16 +109,16 @@ public class EffectManager {
   protected void switchEffect(String newName) {
     switch(newName) {
     case "mirrored":
-      e = new MirroredDefaultVis(size, offset, hzMult);
+      e = new MirroredVerticalVis(size, offset, hzMult, effectName);
       break;
     case "mirroredALL":
-      e = new MirroredDefaultVis(size, offset, hzMult);
+      e = new MirroredVerticalVis(size, offset, hzMult, effectName);
       break;
     case "default":
-      e = new DefaultVis(size, offset, hzMult);
+      e = new DefaultVis(size, offset, hzMult, effectName);
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult);
+      e = new DefaultVis(size, offset, hzMult, effectName);
       break;
     }
   }

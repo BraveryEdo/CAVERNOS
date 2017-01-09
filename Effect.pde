@@ -23,7 +23,7 @@ abstract class Effect {
     sorted = new int[channels][size];
     colorIndex = cp.getIndex(t);
     gradient = false;
-    println("effect '" + name + "' for range type '" + type + "' loaded");
+    println("effect '" + n + "' for range type '" + t + "' loaded");
   }
 
   //display in given bounding box
@@ -72,9 +72,14 @@ abstract class Effect {
 
 
 public class DefaultVis extends Effect {
+  
+  boolean mirrored = false;
+  float m = 0;
 
-  DefaultVis(int size, int offset, float hzMult) {
-    super("default", "all", size, offset, hzMult);
+  DefaultVis(int size, int offset, float hzMult, String type) {
+    super("default", type, size, offset, hzMult);
+    mirrored = false;
+    m = 0;
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -118,17 +123,19 @@ public class DefaultVis extends Effect {
       rotateX(rx);
       rotateY(ry);
       rotateZ(rz);
-      line( (i + .5)*x_scale - w/2.0, h/2.0, (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+      
+        line( (i + .5)*x_scale - w/2.0, h/2.0, (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+      
       popMatrix();
     }
   }
 }
 
 
-public class MirroredDefaultVis extends Effect {
+public class MirroredVerticalVis extends Effect {
 
-  MirroredDefaultVis(int size, int offset, float hzMult) {
-    super("MirroredDefault", "all", size, offset, hzMult);
+  MirroredVerticalVis(int size, int offset, float hzMult, String type) {
+    super("MirroredDefault", type, size, offset, hzMult);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -178,8 +185,8 @@ public class MirroredDefaultVis extends Effect {
 }
 
 public class SubVis extends Effect {
-  SubVis(int size, int offset, float hzMult) {
-    super("sub-range visualizer", "sub", size, offset, hzMult);
+  SubVis(int size, int offset, float hzMult, String type) {
+    super("sub-range visualizer", type, size, offset, hzMult);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -198,8 +205,8 @@ public class SubVis extends Effect {
 }
 
 public class WaveForm extends Effect {
-  WaveForm(int size, int offset, float hzMult) {
-    super("WaveForm visualizer", "all", size, offset, hzMult);
+  WaveForm(int size, int offset, float hzMult, String type) {
+    super("WaveForm visualizer", type, size, offset, hzMult);
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
@@ -215,8 +222,8 @@ public class WaveForm extends Effect {
 }
 
 public class EqRing extends Effect {
-  EqRing(int size, int offset, float hzMult) {
-    super("EqRing visualizer", "all", size, offset, hzMult);
+  EqRing(int size, int offset, float hzMult, String type) {
+    super("EqRing visualizer", type, size, offset, hzMult);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -315,7 +322,7 @@ public class EqRing extends Effect {
       float b = random(255);
       float g = random(255);
       float z = random(5); 
-      for (int j = 0; j + bar_height/2 < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j < spec[1][i]; j+= bar_height) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
           break;
@@ -362,7 +369,7 @@ public class EqRing extends Effect {
 
       pushMatrix();
       rotateZ(PI+a);
-      for (int j = 0; j + bar_height/2 < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j < spec[1][i]; j+= bar_height) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
           break;

@@ -21,7 +21,7 @@ public class Band {
 
   int lastThreadUpdate;
 
-  public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String title) {
+  public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String type) {
     loading++;
     spec = new float[channels][sound[0].length];
     sortedSpec = new float[channels][sound[0].length];
@@ -40,7 +40,7 @@ public class Band {
     binSize = (indexRange[1]-indexRange[0])/float(newSize);
     lastThreadUpdate = millis();
     bandAnalysisThread.start();
-    name = title;
+    name = type;
 
     int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
