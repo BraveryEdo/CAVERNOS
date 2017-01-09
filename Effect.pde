@@ -241,7 +241,7 @@ public class EqRing extends Effect {
 
     float o_rot = -.75*s;
     float i_rad = 187-5*s;
-    float o_rad = (200-7*s+gmax);
+    float o_rad = (200-7*s+gmax*3);
 
     stroke(picked);
     ring(_x, _y, nbars, i_rad, o_rot, false);
@@ -307,7 +307,7 @@ public class EqRing extends Effect {
 
     float angle = TWO_PI / nbars;
     float a = 0;
-    int bar_height = 15;
+    int bar_height = 5;
 
     float s = (low*PI/nbars)*.8;
     rectMode(CENTER);
@@ -322,14 +322,14 @@ public class EqRing extends Effect {
       float b = random(255);
       float g = random(255);
       float z = random(5); 
-      for (int j = 0; j < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j < spec[1][i]; j++) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
         stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7));
-        rect(0, s+low + j, s, s*2/3);
+        rect(0, s+low + j*bar_height, s, s*2/3);
       }
       popMatrix();
       a+= angle;
@@ -341,9 +341,9 @@ public class EqRing extends Effect {
 
     float angle = TWO_PI / nbars;
     float a = 0;
-    int bar_height = 15;
+    int bar_height = 5;
 
-    float s = (low*PI/ nbars);
+    float s = (low*PI/ nbars)*.8;
     rectMode(CENTER);
 
     pushMatrix();
@@ -356,27 +356,27 @@ public class EqRing extends Effect {
       float z = random(5); 
       pushMatrix();
       rotateZ(PI+a);
-      for (int j = 0; j + bar_height/2 < spec[1][(nbars-1)-i]; j+= bar_height) {
+      for (int j = 0; j + bar_height/2 < spec[1][(nbars-1)-i]; j++) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
         stroke(lerpColor(calcColor((nbars-1)-i), color(r-j, b-j, g-j, 120+z*j), .7));
-        rect(0, s+low + j, s, s*2/3);
+        rect(0, s+low + j*bar_height, s, s*2/3);
       }
       popMatrix();
 
       pushMatrix();
       rotateZ(PI+a);
-      for (int j = 0; j < spec[1][i]; j+= bar_height) {
+      for (int j = 0; j < spec[1][i]; j++) {
         //this break clause removes the trailing black boxes when a particular note has been sustained for a while
         if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
         stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7));
-        rect(0, s+low + j, s, s*2/3);
+        rect(0, s+low + j*bar_height, s, s*2/3);
       }
       popMatrix();
 

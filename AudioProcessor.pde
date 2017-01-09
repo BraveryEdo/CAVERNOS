@@ -194,13 +194,13 @@ public class AudioProcessor {
           count++;
         }
       }
-      
+
       //interpolate between the last given data point and the first point of the next section, if none is present then fade out
       int len = in[1].length-1;
       //left/mid/right channels
       float l = in[0][len], m = in[1][len], r = in[2][len];
-      if(last == null){
-       last = new float[]{0,0,0}; 
+      if (last == null) {
+        last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
         float mix = float(j)/n;
@@ -228,6 +228,8 @@ public class AudioProcessor {
         rfft.forward(in.right);
         lfft.forward(in.left);
 
+        float min = 999999;
+        float max = -999999;
 
         for (int i = 0; i < specSize; i++) {
           float left_bin = lfft.getBand(i);
@@ -236,8 +238,18 @@ public class AudioProcessor {
           magnitude[0][i] = left_bin;
           magnitude[1][i] = mix_bin;
           magnitude[2][i] = right_bin;
+          min = min(min, min(mix_bin, min(left_bin, right_bin)));
+          max = max(max, max(mix_bin, max(left_bin, right_bin)));
         }
-
+        if (max > 125) {
+          //println(max);
+          for (int i = 0; i < specSize; i++) {
+            float scale = 100.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        }
         float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
           Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
           Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
