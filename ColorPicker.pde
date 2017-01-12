@@ -53,7 +53,18 @@ public class ColorPicker {
     for(int i = histDepth - 1; i > 0; i--){
       colors[i][ind] = colors[i-1][ind];
     }
-    colors[0][ind] = c;
+    if(ind != 0){
+      colors[0][ind] = c;
+    } else {
+       float r = 0,b = 0,g = 0;
+       for (int i = 1; i < audioRanges; i++){
+           r += red(colors[0][i]);
+           b += blue(colors[0][i]);
+           g += green(colors[0][i]);
+       }
+       r/=(audioRanges-2); g/=(audioRanges-2); b/=(audioRanges-2);
+       colors[0][ind] = color(r,g,b);  
+    }
   }
 
   public color[] getColors(){

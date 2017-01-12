@@ -107,18 +107,23 @@ public class EffectManager {
   }
 
   protected void switchEffect(String newName) {
+    boolean grad = e.gradient;
     switch(newName) {
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName);
+      e.gradient = grad;
       break;
     case "mirroredALL":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName);
+      e.gradient = grad;
       break;
     case "default":
       e = new DefaultVis(size, offset, hzMult, effectName);
+      e.gradient = grad;
       break;
     default:
       e = new DefaultVis(size, offset, hzMult, effectName);
+      e.gradient = grad;
       break;
     }
   }

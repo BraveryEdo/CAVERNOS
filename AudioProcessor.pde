@@ -19,7 +19,7 @@ public class AudioProcessor {
 
   //ranges are based on a sample frequency of 8192/4 (2^9) 
   float[] bottomLimit = {0, sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32};
-  float[] topLimit = {sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16};
+  float[] topLimit = {sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/8};
 
 
 
@@ -230,6 +230,7 @@ public class AudioProcessor {
 
         float min = 999999;
         float max = -999999;
+        float avg = 0;
 
         for (int i = 0; i < specSize; i++) {
           float left_bin = lfft.getBand(i);
@@ -240,9 +241,18 @@ public class AudioProcessor {
           magnitude[2][i] = right_bin;
           min = min(min, min(mix_bin, min(left_bin, right_bin)));
           max = max(max, max(mix_bin, max(left_bin, right_bin)));
+          avg += left_bin+mix_bin+right_bin;
         }
-        if (max > 125) {
+        avg /= (3* specSize);
+        if (max > 300) {
           //println(max);
+          for (int i = 0; i < specSize; i++) {
+            float scale = 300.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0/(max-min);
             for (int j = 0; j < magnitude.length; j++) {

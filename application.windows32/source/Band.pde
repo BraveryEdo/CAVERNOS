@@ -5,6 +5,9 @@ public class Band {
   //1 is mid
   //2 is right
   float[][] spec;
+  //sorted by magnitude of spec index
+  float[][] sortedSpec;
+  int[][] sortedSpecIndex;
   int size;
   float binSize;
 
@@ -18,11 +21,17 @@ public class Band {
 
   int lastThreadUpdate;
 
-  public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String title) {
+  public Band(float[][] sound, float hzm, int[] indexRange, int newSize, String type) {
+    loading++;
     spec = new float[channels][sound[0].length];
+    sortedSpec = new float[channels][sound[0].length];
+    sortedSpecIndex = new int[channels][sound[0].length];
+
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[0].length; j++) {
         spec[i][j] = 0.0;
+        sortedSpec[i][j] = 0.0;
+        sortedSpecIndex[i][j] = j;
       }
     }
     stream(sound);
@@ -31,20 +40,22 @@ public class Band {
     binSize = (indexRange[1]-indexRange[0])/float(newSize);
     lastThreadUpdate = millis();
     bandAnalysisThread.start();
-    name = title;
+    name = type;
 
     int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
-    
-    println("Band analysis for '" + name + "'loaded");
+
+    println("Band analysis for '" + name + "' loaded");
+    loading--;
   }   
 
-  public void stream(float[][] sound) {
+  protected void stream(float[][] sound) {
     //println("steam: " + millis());
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[i].length; j++) {
         spec[i][j] = sound[i][j];
+        sortedSpec[i][j] = sound[i][j];
       }
     }
   }
@@ -64,7 +75,43 @@ public class Band {
     avg = tavg;
     maxIntensity = tmax;
     maxInd = imax;
+    
+    fwdRevBubble(sortedSpec, sortedSpecIndex);
   }
+
+  private void fwdRevBubble(float[][] ss, int[][] ssi) {
+
+    boolean swapped = false;
+    do {
+      //forward+reverse bubble sort to get sorted spec (descending order)
+      swapped = false;
+      int ssEnd = ss[1].length - 2;
+      for (int i = 0; i < ssEnd; i++) {
+        for (int c = 0; c < channels; c++) {
+          if (ss[c][i] < ss[c][i+1]) {
+            float t = ss[c][i];
+            ss[c][i] = ss[c][i+1];
+            ss[c][i+1] = t;
+            int t2 = ssi[c][i];
+            ssi[c][i] = ssi[c][i+1];
+            ssi[c][i+1] = t2;
+            swapped = true;
+          }
+          int j = ssEnd - i;
+          if (ss[c][j] < ss[c][j+1]) {
+            float t = ss[c][j];
+            ss[c][j] = ss[c][j+1];
+            ss[c][j+1] = t;
+            int t2 = ssi[c][j];
+            ssi[c][j] = ssi[c][j+1];
+            ssi[c][j+1] = t2;
+            swapped = true;
+          }
+        }
+      }
+    } while (swapped);
+  }
+
 
   public void updateEffect() {
     //copies are made to fix a null pointer error
@@ -73,7 +120,7 @@ public class Band {
     //float[][] t = {Arrays.copyOf(spec[0], spec[0].length),
     //               Arrays.copyOf(spec[1], spec[1].length),
     //               Arrays.copyOf(spec[2], spec[2].length)};
-    effectManager.pushAnalysis(spec, maxIntensity, avg, maxInd);
+    effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 
 
@@ -82,19 +129,25 @@ public class Band {
     effectManager.display(left, top, right, bottom);
   }
 
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    effectManager.display(x, y, h, w, rx, ry, rz);
+  }
+
   Thread bandAnalysisThread = new Thread(new Runnable() {
     public void run() {
       System.out.println(Thread.currentThread().getName() + " " + name + "-band Analysis Thread Started");
-        try {
-            Thread.sleep( startupBuffer );
-          }
-          catch ( InterruptedException e )
-          {
-            e.printStackTrace();
-            Thread.currentThread().interrupt();
-          }
-          
-          
+
+      try {
+        while (loading != 0) { 
+          Thread.sleep( 1000 );
+        }
+      }
+      catch ( InterruptedException e )
+      {
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      }
+
       while (true) {
         analyze();
         updateEffect();
