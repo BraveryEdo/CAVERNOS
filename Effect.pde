@@ -48,6 +48,10 @@ abstract class Effect {
     cp.setColor(type, this.picked);
     return picked;
   }
+
+  public int[][] getSorted() {
+    return sorted;
+  }
   public void setSize(int s) { 
     this.size = s;
   }
@@ -69,7 +73,61 @@ abstract class Effect {
 }
 
 
+String specDispMode = "default";
+String gradientMode = "none";
+void mouseClicked() {
+  if (mouseButton  == LEFT) {
+    println("left click");
+    if (specDispMode == "default") {
+      specDispMode = "mirrored";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        } else {
+          // b.effectManager.switchEffect(displayMode+"ALL");
+        }
+      }
+      println("mirrored mode");
+    } else {
+      specDispMode = "default";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        } else {
+          // b.effectManager.switchEffect(displayMode+"ALL");
+        }
+      }
+      println("default mode");
+    }
+  } else if (mouseButton == RIGHT) {
+    println("right click");
+    if (gradientMode == "none") {
+      gradientMode = "gradient"; 
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = true;
+      }
+      println("gradients enabled");
+    } else {
+      gradientMode = "none";
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = false;
+      }
+      println("gradients disabled");
+    }
+  }
+}
 
+  boolean flowerBars = false;
+  void keyPressed() {
+    if (key == 'f') {
+      flowerBars = !flowerBars;
+      if(flowerBars){
+         println("petalMode enabled"); 
+      } else {
+         println("petalMode disabled"); 
+      }
+    }
+  }
 
 public class DefaultVis extends Effect {
 
@@ -258,7 +316,9 @@ public class EqRing extends Effect {
 
     stroke(current);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    if (displayMode == "mirrored") {
+    if (flowerBars) {
+      flowerBars(_x, _y, i_rad, s);
+    } else if (specDispMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
       bars(_x, _y, i_rad, s);
@@ -399,6 +459,59 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
+  void flowerBars(float _x, float _y, float low, float rot) {
+  //to do:: make the rnage picked be a range from lowest for sorted to highest from sorted, make sure color is picked according to source hz
+    float angle = TWO_PI / nbars;
+    float a = 0;
+    int bar_height = 5;
+
+    float s = (low*PI/nbars)*(.8+.2*sin(millis()));
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+
+    int pl = 0; //petal length
+    do {
+      pl++;
+    } while (pl < sorted[1].length - 1&& sorted[1][spec[1].length-pl-1] > 0);
+
+    //get the first pl # of elements and scale it up to the next higgest poewr of 2 before total size
+    int plpwr = 2;
+    while ( plpwr < pl && plpwr < nbars) {
+      plpwr *= 2;
+    }
+    if (plpwr > nbars) {
+      plpwr = nbars;
+    }
+    float reps = nbars/plpwr;
+
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = 0; pcount < plpwr; pcount++) {
+        pushMatrix();
+        rotateZ(a+angle*pcount + (TWO_PI/reps)*i);
+        float r = random(255);
+        float b = random(255);
+        float g = random(255);
+        float z = random(5); 
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
+            break;
+          }
+          //stroke(r-j, b-j, g-j, 120+z*j);
+          stroke(lerpColor(calcColor(pcount), color(r-j, b-j, g-j, 120+z*j), .7));
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+      a+= angle;
+    }
+    popMatrix();
+  }
 
   //creates a ring of outward facing triangles
   void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {

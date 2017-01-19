@@ -125,7 +125,7 @@ public class AudioProcessor {
   }
 
   void display() {
-    if (displayMode == "default") {
+    if (specDispMode == "default") {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
