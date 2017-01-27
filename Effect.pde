@@ -66,6 +66,7 @@ abstract class Effect {
   }
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
+    sorted = sort;
   }
   public void toggleGradient() { 
     gradient = !gradient;
@@ -117,27 +118,25 @@ void mouseClicked() {
   }
 }
 
-  boolean flowerBars = false;
-  void keyPressed() {
-    if (key == 'f') {
-      flowerBars = !flowerBars;
-      if(flowerBars){
-         println("petalMode enabled"); 
-      } else {
-         println("petalMode disabled"); 
-      }
+boolean flowerBars = false;
+void keyPressed() {
+  if (key == 'f') {
+    flowerBars = !flowerBars;
+    if (flowerBars) {
+      println("petalMode enabled");
+    } else {
+      println("petalMode disabled");
     }
   }
+}
 
 public class DefaultVis extends Effect {
 
   boolean mirrored = false;
-  float m = 0;
 
   DefaultVis(int size, int offset, float hzMult, String type) {
     super("default", type, size, offset, hzMult);
     mirrored = false;
-    m = 0;
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -206,32 +205,38 @@ public class MirroredVerticalVis extends Effect {
     float mix = .15;
 
     cp.setColor(type, this.picked);
-    color[] c = cp.getColors();
+    color [][] hist = cp.getColorHistory();
+    color[] c = hist[0];
     color current, prev, next, bckgrnd;
     current = c[colorIndex];
     bckgrnd = c[0];
+    if (colorIndex == 0) {
+      for (int i = 1; i < hist.length; i++) {
+        current = lerpColor(current, hist[i][colorIndex], .25);
+      }
+      prev = hist[1][colorIndex];
+      next =  hist[0][colorIndex];
+    } else if (colorIndex == 1) {
+      prev = lerpColor(current, bckgrnd, mix);
+      next = c[colorIndex+1];
+    } else if (colorIndex < c.length-2) {
+      prev = c[colorIndex-1];
+      next = c[colorIndex+1];
+    } else { 
+      prev = c[colorIndex-1];
+      next = lerpColor(current, bckgrnd, mix);
+    }
 
     for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) {
+      if (gradient && colorIndex !=0) { 
 
-        if (colorIndex == 1) {
-          prev = lerpColor(current, bckgrnd, mix);
-          next = c[colorIndex+1];
-        } else if (colorIndex < c.length-2) {
-          prev = c[colorIndex-1];
-          next = c[colorIndex+1];
-        } else { 
-          prev = c[colorIndex-1];
-          next = lerpColor(current, bckgrnd, mix);
+        if (i < size /4) {
+          stroke(lerpColor(current, prev, 0.5*i/size));
+        } else if (i > .75*size) {
+          stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
+        } else {
+          stroke(current);
         }
-
-        //if (i < size /4) {
-        //  stroke(lerpColor(lerpColor(prev, current, 0.5*i/size), bckgrnd, mix));
-        //} else if (1 > 3/4*size) {
-        //  stroke(lerpColor(lerpColor(current, next, 0.5*(i-(size/4))/size), bckgrnd, mix));
-        //} else {
-        stroke(lerpColor(picked, bckgrnd, mix));
-        //}
       } else {
         stroke(picked);
       }
@@ -335,7 +340,7 @@ public class EqRing extends Effect {
     noFill();
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(s+90));
+    rotateX(sin(s));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
@@ -343,7 +348,7 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(-(s+90)));
+    rotateX(sin(-(s)));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -352,14 +357,14 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(s+90));
+    rotateY(sin(s));
     stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(-(s+90)));
+    rotateY(sin(-(s)));
     //stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -460,38 +465,64 @@ public class EqRing extends Effect {
   }
 
   void flowerBars(float _x, float _y, float low, float rot) {
-  //to do:: make the rnage picked be a range from lowest for sorted to highest from sorted, make sure color is picked according to source hz
+    //to do:: make the rnage picked be a range from lowest for sorted to highest from sorted, make sure color is picked according to source hz
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
 
-    float s = (low*PI/nbars)*(.8+.2*sin(millis()));
+    float s = (low*PI/nbars)*.8;//(.8+.2*sin(millis()));
     rectMode(CENTER);
 
     pushMatrix();
     translate(_x, _y);
     rotate(rot);
-
-    int pl = 0; //petal length
-    do {
-      pl++;
-    } while (pl < sorted[1].length - 1&& sorted[1][spec[1].length-pl-1] > 0);
-
+    float mid = spec[1][sorted[1][0]];
+    float bot = mid, top = mid;
+    int lowIndex = sorted[1][0], highIndex = sorted[1][0];
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = i - 1;
+      } else { 
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] > spec[1][highIndex]) {
+        highIndex = i + 1;
+      } else { 
+        break;
+      }
+    }
+    int pl = highIndex-lowIndex;
     //get the first pl # of elements and scale it up to the next higgest poewr of 2 before total size
-    int plpwr = 2;
+    int plpwr = 4;
     while ( plpwr < pl && plpwr < nbars) {
       plpwr *= 2;
     }
-    if (plpwr > nbars) {
-      plpwr = nbars;
+    while (plpwr > nbars) {
+      plpwr /=2;
     }
-    float reps = nbars/plpwr;
+
+    int reps = ceil(nbars/plpwr);
+    if (float(nbars/reps)%1 != 0) {
+      int trep = nbars;
+      while (trep > reps) {
+        trep /= 2;
+      }
+      trep *=2;
+      reps = trep;
+    }
+    //println("reps: "+reps+" plwr: " + plpwr + " , pl: " + pl);
 
     for (int i = 0; i < reps; i ++) {
 
-      for (int pcount = 0; pcount < plpwr; pcount++) {
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
         pushMatrix();
-        rotateZ(a+angle*pcount + (TWO_PI/reps)*i);
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount + angle*plpwr*i);
+        } else {
+          rotateZ(a+angle*(plpwr-pcount) + angle*plpwr*(i));
+        }
         float r = random(255);
         float b = random(255);
         float g = random(255);
@@ -508,6 +539,7 @@ public class EqRing extends Effect {
         }
         popMatrix();
       }
+
       a+= angle;
     }
     popMatrix();
