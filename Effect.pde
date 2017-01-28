@@ -118,11 +118,11 @@ void mouseClicked() {
   }
 }
 
-boolean flowerBars = false;
+boolean spotlightBars = false;
 void keyPressed() {
   if (key == 'f') {
-    flowerBars = !flowerBars;
-    if (flowerBars) {
+    spotlightBars = !spotlightBars;
+    if (spotlightBars) {
       println("petalMode enabled");
     } else {
       println("petalMode disabled");
@@ -254,6 +254,73 @@ public class MirroredVerticalVis extends Effect {
   }
 }
 
+public class ExpandingVis extends Effect {
+
+  ExpandingVis(int size, int offset, float hzMult, String type) {
+    super("ExpandingVis", type, size, offset, hzMult);
+  }
+
+  void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0, bottom - h/2.0, h, w, 0, 0, 0);
+  }
+
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+    float mix = .15;
+
+    cp.setColor(type, this.picked);
+    color [][] hist = cp.getColorHistory();
+    color[] c = hist[0];
+    color current, prev, next, bckgrnd;
+    current = c[colorIndex];
+    bckgrnd = c[0];
+    if (colorIndex == 0) {
+      for (int i = 1; i < hist.length; i++) {
+        current = lerpColor(current, hist[i][colorIndex], .25);
+      }
+      prev = hist[1][colorIndex];
+      next =  hist[0][colorIndex];
+    } else if (colorIndex == 1) {
+      prev = lerpColor(current, bckgrnd, mix);
+      next = c[colorIndex+1];
+    } else if (colorIndex < c.length-2) {
+      prev = c[colorIndex-1];
+      next = c[colorIndex+1];
+    } else { 
+      prev = c[colorIndex-1];
+      next = lerpColor(current, bckgrnd, mix);
+    }
+
+    for (int i = 0; i < size; i++) {
+      if (gradient && colorIndex !=0) { 
+
+        if (i < size /4) {
+          stroke(lerpColor(current, prev, 0.5*i/size));
+        } else if (i > .75*size) {
+          stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
+        } else {
+          stroke(current);
+        }
+      } else {
+        stroke(picked);
+      }
+
+      noFill();
+      pushMatrix();
+      translate(x, y, 0);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      line((i + .5)*x_scale - w/2.0, h/2.0 + spec[1][i], 
+        (i + .5)*x_scale - w/2.0, h/2.0 - spec[1][i]);
+      popMatrix();
+    }
+  }
+}
+
 public class SubVis extends Effect {
   SubVis(int size, int offset, float hzMult, String type) {
     super("sub-range visualizer", type, size, offset, hzMult);
@@ -313,16 +380,16 @@ public class EqRing extends Effect {
     color current = c[colorIndex];
     float t = millis();
     float gmax = spec[1][maxIndex];
-    float s = PI/2.0+sin((t)*.0002);
+    float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
     float i_rad = 187-5*s;
-    float o_rad = (200-7*s+gmax*3);
+    float o_rad = (i_rad+gmax*5);
 
     stroke(current);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    if (flowerBars) {
-      flowerBars(_x, _y, i_rad, s);
+    if (spotlightBars) {
+      spotlightBars(_x, _y, i_rad, s);
     } else if (specDispMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
@@ -464,83 +531,81 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
-  void flowerBars(float _x, float _y, float low, float rot) {
-    //to do:: make the rnage picked be a range from lowest for sorted to highest from sorted, make sure color is picked according to source hz
-    float angle = TWO_PI / nbars;
-    float a = 0;
+  void spotlightBars(float _x, float _y, float low, float rot) {
     int bar_height = 5;
-
-    float s = (low*PI/nbars)*.8;//(.8+.2*sin(millis()));
     rectMode(CENTER);
 
     pushMatrix();
     translate(_x, _y);
     rotate(rot);
-    float mid = spec[1][sorted[1][0]];
-    float bot = mid, top = mid;
-    int lowIndex = sorted[1][0], highIndex = sorted[1][0];
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
     for (int i = lowIndex; i > 0; i--) {
       if (spec[1][i-1] < spec[1][lowIndex]) {
-        lowIndex = i - 1;
-      } else { 
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
         break;
       }
     }
     for (int i = highIndex; i < spec[1].length-2; i++) {
-      if (spec[1][i+1] > spec[1][highIndex]) {
-        highIndex = i + 1;
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
       } else { 
         break;
       }
-    }
-    int pl = highIndex-lowIndex;
-    //get the first pl # of elements and scale it up to the next higgest poewr of 2 before total size
-    int plpwr = 4;
-    while ( plpwr < pl && plpwr < nbars) {
-      plpwr *= 2;
-    }
-    while (plpwr > nbars) {
-      plpwr /=2;
-    }
 
-    int reps = ceil(nbars/plpwr);
-    if (float(nbars/reps)%1 != 0) {
-      int trep = nbars;
-      while (trep > reps) {
-        trep /= 2;
+      if (spec[1][i+1] < diff) {
+        break;
       }
-      trep *=2;
-      reps = trep;
     }
-    //println("reps: "+reps+" plwr: " + plpwr + " , pl: " + pl);
 
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if(reps %2 != 0){ reps++;}
+
+    color bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
     for (int i = 0; i < reps; i ++) {
 
       for (int pcount = lowIndex; pcount < highIndex; pcount++) {
         pushMatrix();
         if (i%2 == 0) {
-          rotateZ(a+angle*pcount + angle*plpwr*i);
+          rotateZ(a+angle*pcount);
         } else {
-          rotateZ(a+angle*(plpwr-pcount) + angle*plpwr*(i));
+          rotateZ(a+angle*(pl-pcount-1));
         }
-        float r = random(255);
-        float b = random(255);
-        float g = random(255);
-        float z = random(5); 
 
         for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
           //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-          if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
+          if (alph-j <= 0) { 
             break;
           }
-          //stroke(r-j, b-j, g-j, 120+z*j);
-          stroke(lerpColor(calcColor(pcount), color(r-j, b-j, g-j, 120+z*j), .7));
+          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75-.25*sin(millis()*.002)));
           rect(0, s+low + j*bar_height, s, s*2/3);
         }
         popMatrix();
       }
 
-      a+= angle;
+      a+= TWO_PI/float(reps);
     }
     popMatrix();
   }

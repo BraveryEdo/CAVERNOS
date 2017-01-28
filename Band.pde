@@ -114,12 +114,6 @@ public class Band {
 
 
   public void updateEffect() {
-    //copies are made to fix a null pointer error
-    //spec gets updated super frequently by the audioprocessor
-    //so while it's copying/passing to the next method the contents change
-    //float[][] t = {Arrays.copyOf(spec[0], spec[0].length),
-    //               Arrays.copyOf(spec[1], spec[1].length),
-    //               Arrays.copyOf(spec[2], spec[2].length)};
     effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 

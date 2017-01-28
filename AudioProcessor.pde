@@ -64,13 +64,6 @@ public class AudioProcessor {
     rfft.forward(in.right);
     lfft.forward(in.left);
 
-    //float left_bin = lfft.getBand(i);
-    //float right_bin = rfft.getBand(i);
-    //float  mix_bin = (left_bin+right_bin)/2.0;
-    //magnitude[0][i] = left_bin;
-    //magnitude[1][i] = mix_bin;
-    //magnitude[2][i] = right_bin;
-
     float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
       Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
       Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
