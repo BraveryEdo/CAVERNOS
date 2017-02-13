@@ -6,12 +6,15 @@ abstract class Effect {
   int offset;
   float hzMult;
   int maxIndex;
+  int histDepth;
   float[][] spec;
+  float[][][] specHist;
   int[][] sorted;
+  int [][][] sortedHist;
   int colorIndex;
   boolean gradient;
 
-  Effect(String n, String t, int s, int o, float h) {
+  Effect(String n, String t, int s, int o, float h, int hist) {
     setName(n);
     setType(t);
     setColor(color(0, 0, 0));
@@ -19,8 +22,11 @@ abstract class Effect {
     setOffset(o);
     setHzMult(h);
     setMaxIndex(0);
+    histDepth = hist;
     spec = new float[channels][size];
+    specHist = new float[histDepth][channels][size];
     sorted = new int[channels][size];
+    sortedHist = new int[histDepth][channels][size];
     colorIndex = cp.getIndex(t);
     gradient = false;
     println("effect '" + n + "' for range type '" + t + "' loaded");
@@ -123,9 +129,9 @@ void keyPressed() {
   if (key == 'f') {
     spotlightBars = !spotlightBars;
     if (spotlightBars) {
-      println("petalMode enabled");
+      println("spotlightBars enabled");
     } else {
-      println("petalMode disabled");
+      println("spotlightBars disabled");
     }
   }
 }
@@ -134,8 +140,8 @@ public class DefaultVis extends Effect {
 
   boolean mirrored = false;
 
-  DefaultVis(int size, int offset, float hzMult, String type) {
-    super("default", type, size, offset, hzMult);
+  DefaultVis(int size, int offset, float hzMult, String type, int h) {
+    super("default", type, size, offset, hzMult, h);
     mirrored = false;
   }
 
@@ -189,8 +195,8 @@ public class DefaultVis extends Effect {
 
 public class MirroredVerticalVis extends Effect {
 
-  MirroredVerticalVis(int size, int offset, float hzMult, String type) {
-    super("MirroredDefault", type, size, offset, hzMult);
+  MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
+    super("MirroredDefault", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -256,8 +262,8 @@ public class MirroredVerticalVis extends Effect {
 
 public class ExpandingVis extends Effect {
 
-  ExpandingVis(int size, int offset, float hzMult, String type) {
-    super("ExpandingVis", type, size, offset, hzMult);
+  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
+    super("ExpandingVis", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -322,8 +328,8 @@ public class ExpandingVis extends Effect {
 }
 
 public class SubVis extends Effect {
-  SubVis(int size, int offset, float hzMult, String type) {
-    super("sub-range visualizer", type, size, offset, hzMult);
+  SubVis(int size, int offset, float hzMult, String type, int h) {
+    super("sub-range visualizer", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -343,8 +349,8 @@ public class SubVis extends Effect {
 }
 
 public class WaveForm extends Effect {
-  WaveForm(int size, int offset, float hzMult, String type) {
-    super("WaveForm visualizer", type, size, offset, hzMult);
+  WaveForm(int size, int offset, float hzMult, String type, int h) {
+    super("WaveForm visualizer", type, size, offset, hzMult, h);
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
@@ -362,8 +368,8 @@ public class WaveForm extends Effect {
 }
 
 public class EqRing extends Effect {
-  EqRing(int size, int offset, float hzMult, String type) {
-    super("EqRing visualizer", type, size, offset, hzMult);
+  EqRing(int size, int offset, float hzMult, String type, int h) {
+    super("EqRing visualizer", type, size, offset, hzMult, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -527,6 +533,87 @@ public class EqRing extends Effect {
       popMatrix();
 
       a+= angle;
+    }
+    popMatrix();
+  }
+  
+  void tunnel(float _x, float _y, float low, float rot) {
+    int bar_height = 5;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if(reps %2 != 0){ reps++;}
+
+    color bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          color t = lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75-.25*sin(millis()*.002));
+          fill(t);
+          stroke(t);
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/float(reps);
     }
     popMatrix();
   }

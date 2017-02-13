@@ -9,9 +9,7 @@ public class AudioProcessor {
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
   int specSize = 2048;
-  int histDepth = 16;
   float[][] magnitude;
-  float[][][] history;
 
   ////ranges are based on a sample frequency of 8192 (2^13) 
   //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -55,7 +53,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    history = new float[histDepth][channels][specSize];
     logicRate = lr;
     lastLogicUpdate = millis();
 
@@ -248,6 +245,13 @@ public class AudioProcessor {
         } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if( max < 20 && max > 5){
+           for (int i = 0; i < specSize; i++) {
+            float scale = 50.0/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
             }
