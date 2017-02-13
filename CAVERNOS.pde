@@ -4,6 +4,7 @@ import ddf.minim.analysis.*;
 
 
 
+int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
 
@@ -36,5 +37,11 @@ void draw() {
     text("Loading...", width/2.0, height/2.0);
   } else {
     ap.display();
+    if (millis() < 5000) {
+      textAlign(CENTER);
+      textSize(32);
+      fill((5000-millis())/42);
+      text("Press F1 for menu", width/2.0, height/4.0);
+    }
   }
 }

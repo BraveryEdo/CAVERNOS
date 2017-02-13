@@ -120,7 +120,7 @@ public class AudioProcessor {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
         } else {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
         }
       }
     } else {
@@ -131,7 +131,7 @@ public class AudioProcessor {
           float x = width/2.0;
           float w = height/ap.bands.length;
           float y = height-w*(i+.5);
-          float h = width/ap.bands.length;
+          float h = width/(ap.bands.length-1);
 
           bands[i].display(x-h/2.0, y, h, w, 0, 0, -PI/2);
           bands[i].display(x+h/2.0, y, h, w, PI, 0, PI/2);

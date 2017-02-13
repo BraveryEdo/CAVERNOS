@@ -10,7 +10,7 @@ public class ColorPicker {
   color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
   
   
-  int histDepth = 16;
+  int histDepth = histSize;
   int audioRanges = 6; //all, sub, low, mid, upper, high
   color[][] colors;
   public ColorPicker() {

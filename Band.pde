@@ -41,8 +41,6 @@ public class Band {
     lastThreadUpdate = millis();
     bandAnalysisThread.start();
     name = type;
-
-    int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
 

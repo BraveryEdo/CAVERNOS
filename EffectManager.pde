@@ -14,7 +14,7 @@ public class EffectManager {
   color picked;
   Effect e;
 
-  public EffectManager(String name,int h, int s, int analysisProps, float hz, int off) {
+  public EffectManager(String name, int h, int s, int analysisProps, float hz, int off) {
     loading++;
     effectName = name;
     size = s;
@@ -109,6 +109,10 @@ public class EffectManager {
   protected void switchEffect(String newName) {
     boolean grad = e.gradient;
     switch(newName) {
+    case "expanding":
+      e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
+      e.gradient = grad;
+      break;
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       e.gradient = grad;
