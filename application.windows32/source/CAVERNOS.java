@@ -24,6 +24,7 @@ public class CAVERNOS extends PApplet {
 
 
 
+int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
 
@@ -56,53 +57,15 @@ public void draw() {
     text("Loading...", width/2.0f, height/2.0f);
   } else {
     ap.display();
-  }
-}
-
-
-String displayMode = "default";
-String gradientMode = "none";
-public void mouseClicked() {
-  if (mouseButton  == LEFT) {
-    println("left click");
-    if (displayMode == "default") {
-      displayMode = "mirrored";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(displayMode);
-        } else {
-          // b.effectManager.switchEffect(displayMode+"ALL");
-        }
-      }
-      println("mirrored mode");
-    } else {
-      displayMode = "default";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(displayMode);
-        } else {
-          // b.effectManager.switchEffect(displayMode+"ALL");
-        }
-      }
-      println("default mode");
-    }
-  } else if(mouseButton == RIGHT){
-    println("right click");
-    if(gradientMode == "none"){
-       gradientMode = "gradient"; 
-       for (Band b : ap.bands) {
-        b.effectManager.e.gradient = true; 
-       }
-       println("gradients enabled");
-    } else {
-      gradientMode = "none";
-             for (Band b : ap.bands) {
-        b.effectManager.e.gradient = false; 
-       }
-      println("gradients disabled");
+    if (millis() < 5000) {
+      textAlign(CENTER);
+      textSize(32);
+      fill((5000-millis())/42);
+      text("Press F1 for menu", width/2.0f, height/4.0f);
     }
   }
 }
+
 public class AudioProcessor {
   //audio processing elements
   Minim minim;
@@ -114,9 +77,7 @@ public class AudioProcessor {
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
   int specSize = 2048;
-  int histDepth = 16;
   float[][] magnitude;
-  float[][][] history;
 
   ////ranges are based on a sample frequency of 8192 (2^13) 
   //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -133,7 +94,7 @@ public class AudioProcessor {
   //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
 
   float mult = PApplet.parseFloat(specSize)/PApplet.parseFloat(sampleRate);
-  float hzMult = PApplet.parseFloat(sampleRate)/PApplet.parseFloat(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
+  float hzMult = PApplet.parseFloat(sampleRate)/PApplet.parseFloat(specSize);  //the equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
 
   int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
   int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
@@ -160,7 +121,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    history = new float[histDepth][channels][specSize];
     logicRate = lr;
     lastLogicUpdate = millis();
 
@@ -168,13 +128,6 @@ public class AudioProcessor {
     //update audio buffer
     rfft.forward(in.right);
     lfft.forward(in.left);
-
-    //float left_bin = lfft.getBand(i);
-    //float right_bin = rfft.getBand(i);
-    //float  mix_bin = (left_bin+right_bin)/2.0;
-    //magnitude[0][i] = left_bin;
-    //magnitude[1][i] = mix_bin;
-    //magnitude[2][i] = right_bin;
 
     float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
       Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
@@ -230,23 +183,23 @@ public class AudioProcessor {
   }
 
   public void display() {
-    if (displayMode == "default") {
+    if (specDispMode == "default") {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0f, 3*height/4, 3*width/4.0f, height-(height/ap.bands.length));
         } else {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
         }
       }
     } else {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
-          bands[i].display(width/4.0f, 3*height/4, 3*width/4.0f, height-(height/ap.bands.length));
+          bands[i].display(width/4.0f, 3*height/4, 3*width/4.0f, height-(height/(ap.bands.length-1)));
         } else {
           float x = width/2.0f;
-          float w = height/ap.bands.length;
+          float w = height/(ap.bands.length-1);
           float y = height-w*(i+.5f);
-          float h = width/ap.bands.length;
+          float h = width/(ap.bands.length-1);
 
           bands[i].display(x-h/2.0f, y, h, w, 0, 0, -PI/2);
           bands[i].display(x+h/2.0f, y, h, w, PI, 0, PI/2);
@@ -282,7 +235,7 @@ public class AudioProcessor {
     } else {
       //scale up size
       float[][] t = new float[channels][size];
-      float n = PApplet.parseFloat(size)/PApplet.parseFloat(in[1].length);
+      float n = ceil(PApplet.parseFloat(size)/PApplet.parseFloat(in[1].length));
       int count = 0;
       for (int i = 0; i < in[1].length - 1; i ++) {
         //left/mid/right channels
@@ -308,7 +261,7 @@ public class AudioProcessor {
         last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
-        float mix = PApplet.parseFloat(j)/n;
+        float mix = PApplet.parseFloat(max(j-1,1))/n;
         l = lerp(l, last[0], mix);
         m = lerp(m, last[1], mix);
         r = lerp(r, last[2], mix);
@@ -360,6 +313,13 @@ public class AudioProcessor {
         } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0f/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if( max < 20 && max > 5){
+           for (int i = 0; i < specSize; i++) {
+            float scale = 50.0f/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
             }
@@ -468,8 +428,6 @@ public class Band {
     lastThreadUpdate = millis();
     bandAnalysisThread.start();
     name = type;
-
-    int histSize = 32;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
     updateEffect();
 
@@ -541,12 +499,6 @@ public class Band {
 
 
   public void updateEffect() {
-    //copies are made to fix a null pointer error
-    //spec gets updated super frequently by the audioprocessor
-    //so while it's copying/passing to the next method the contents change
-    //float[][] t = {Arrays.copyOf(spec[0], spec[0].length),
-    //               Arrays.copyOf(spec[1], spec[1].length),
-    //               Arrays.copyOf(spec[2], spec[2].length)};
     effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 
@@ -612,7 +564,7 @@ public class ColorPicker {
   int[] colorChart = {0xff4CFF00, 0xff00FF73, 0xff00a7FF, 0xff0020FF, 0xff3500FF, 0xff5600B6, 0xff4E006C, 0xff9F0000, 0xffDB0000, 0xffFF3600, 0xffFFC100, 0xffBFFF00};
   
   
-  int histDepth = 16;
+  int histDepth = histSize;
   int audioRanges = 6; //all, sub, low, mid, upper, high
   int[][] colors;
   public ColorPicker() {
@@ -738,12 +690,15 @@ abstract class Effect {
   int offset;
   float hzMult;
   int maxIndex;
+  int histDepth;
   float[][] spec;
+  float[][][] specHist;
   int[][] sorted;
+  int [][][] sortedHist;
   int colorIndex;
   boolean gradient;
 
-  Effect(String n, String t, int s, int o, float h) {
+  Effect(String n, String t, int s, int o, float h, int hist) {
     setName(n);
     setType(t);
     setColor(color(0, 0, 0));
@@ -751,8 +706,11 @@ abstract class Effect {
     setOffset(o);
     setHzMult(h);
     setMaxIndex(0);
+    histDepth = hist;
     spec = new float[channels][size];
+    specHist = new float[histDepth][channels][size];
     sorted = new int[channels][size];
+    sortedHist = new int[histDepth][channels][size];
     colorIndex = cp.getIndex(t);
     gradient = false;
     println("effect '" + n + "' for range type '" + t + "' loaded");
@@ -780,6 +738,10 @@ abstract class Effect {
     cp.setColor(type, this.picked);
     return picked;
   }
+
+  public int[][] getSorted() {
+    return sorted;
+  }
   public void setSize(int s) { 
     this.size = s;
   }
@@ -794,6 +756,13 @@ abstract class Effect {
   }
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
+    sorted = sort;
+    for (int i = 0; i < histDepth-1; i++) {
+      specHist[i+1] = specHist[i];
+      sortedHist[i+1] = sortedHist[i];
+    }
+    specHist[0] = s;
+    sortedHist[0] = sort;
   }
   public void toggleGradient() { 
     gradient = !gradient;
@@ -801,17 +770,82 @@ abstract class Effect {
 }
 
 
+String gradientMode = "none";
+public void mouseClicked() {
+  if (mouseButton == RIGHT) {
+    println("right click");
+    if (gradientMode == "none") {
+      gradientMode = "gradient"; 
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = true;
+      }
+      println("gradients enabled");
+    } else {
+      gradientMode = "none";
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = false;
+      }
+      println("gradients disabled");
+    }
+  }
+}
 
+String specDispMode = "default";
+boolean spotlightBars = false;
+public void keyPressed() {
+  if (key == 's') {
+    spotlightBars = !spotlightBars;
+    if (spotlightBars) {
+      println("spotlightBars enabled");
+    } else {
+      println("spotlightBars disabled");
+    }
+  } else if (key  == 'd') {
+    if (specDispMode != "default") {
+      specDispMode = "default";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("default spec mode");
+    } else {
+      println("default spec mode already enabled");
+    }
+  } else if (key == 'm') {
+    if (specDispMode != "mirrored") {
+      specDispMode = "mirrored";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("mirrored spec mode");
+    } else {
+      println("mirrored spec mode already enabled");
+    }
+  } else if (key == 'e') {
+    if (specDispMode != "expanding") {
+      specDispMode = "expanding";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("expanding spec mode");
+    } else {
+      println("expanding spec mode already enabled");
+    }
+  }
+}
 
 public class DefaultVis extends Effect {
 
   boolean mirrored = false;
-  float m = 0;
 
-  DefaultVis(int size, int offset, float hzMult, String type) {
-    super("default", type, size, offset, hzMult);
+  DefaultVis(int size, int offset, float hzMult, String type, int h) {
+    super("default", type, size, offset, hzMult, h);
     mirrored = false;
-    m = 0;
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -864,8 +898,8 @@ public class DefaultVis extends Effect {
 
 public class MirroredVerticalVis extends Effect {
 
-  MirroredVerticalVis(int size, int offset, float hzMult, String type) {
-    super("MirroredDefault", type, size, offset, hzMult);
+  MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
+    super("MirroredDefault", type, size, offset, hzMult, h);
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -880,32 +914,38 @@ public class MirroredVerticalVis extends Effect {
     float mix = .15f;
 
     cp.setColor(type, this.picked);
-    int[] c = cp.getColors();
+    int [][] hist = cp.getColorHistory();
+    int[] c = hist[0];
     int current, prev, next, bckgrnd;
     current = c[colorIndex];
     bckgrnd = c[0];
+    if (colorIndex == 0) {
+      for (int i = 1; i < hist.length; i++) {
+        current = lerpColor(current, hist[i][colorIndex], .25f);
+      }
+      prev = hist[1][colorIndex];
+      next =  hist[0][colorIndex];
+    } else if (colorIndex == 1) {
+      prev = lerpColor(current, bckgrnd, mix);
+      next = c[colorIndex+1];
+    } else if (colorIndex < c.length-2) {
+      prev = c[colorIndex-1];
+      next = c[colorIndex+1];
+    } else { 
+      prev = c[colorIndex-1];
+      next = lerpColor(current, bckgrnd, mix);
+    }
 
     for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) {
+      if (gradient && colorIndex !=0) { 
 
-        if (colorIndex == 1) {
-          prev = lerpColor(current, bckgrnd, mix);
-          next = c[colorIndex+1];
-        } else if (colorIndex < c.length-2) {
-          prev = c[colorIndex-1];
-          next = c[colorIndex+1];
-        } else { 
-          prev = c[colorIndex-1];
-          next = lerpColor(current, bckgrnd, mix);
+        if (i < size /4) {
+          stroke(lerpColor(current, prev, 0.5f*i/size));
+        } else if (i > .75f*size) {
+          stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
+        } else {
+          stroke(current);
         }
-
-        //if (i < size /4) {
-        //  stroke(lerpColor(lerpColor(prev, current, 0.5*i/size), bckgrnd, mix));
-        //} else if (1 > 3/4*size) {
-        //  stroke(lerpColor(lerpColor(current, next, 0.5*(i-(size/4))/size), bckgrnd, mix));
-        //} else {
-        stroke(lerpColor(picked, bckgrnd, mix));
-        //}
       } else {
         stroke(picked);
       }
@@ -923,15 +963,100 @@ public class MirroredVerticalVis extends Effect {
   }
 }
 
-public class SubVis extends Effect {
-  SubVis(int size, int offset, float hzMult, String type) {
-    super("sub-range visualizer", type, size, offset, hzMult);
+public class ExpandingVis extends Effect {
+
+  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
+    super("ExpandingVis", type, size, offset, hzMult, h);
   }
 
   public void display(float left, float top, float right, float bottom) {
     float w = (right-left);
     float h = (bottom-top);
-    float mid = (left+right)/2.0f;
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+    float mix = .15f;
+    float ER = .15f+.07f*sin(millis()); //expansion reduction
+
+    cp.setColor(type, this.picked);
+    int [][] hist = cp.getColorHistory();
+    int current, prev, next, bckgrnd;
+    bckgrnd = hist[0][0];
+
+    float[] splitDist = new float[size];
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        splitDist[j] = max(specHist[0][1][j], 1);
+      }
+      for (int j = 1; j < histDepth; j++) {
+        splitDist[i] += specHist[j][1][i]*ER;
+      }
+    }
+
+    for (int hd = histDepth-1; hd >= 0; hd--) {
+      current = hist[hd][colorIndex];
+      if (colorIndex == 0) {
+        for (int i = 1; i < hist.length; i++) {
+          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
+        }
+        prev = hist[1][colorIndex];
+        next =  hist[0][colorIndex];
+      } else if (colorIndex == 1) {
+        prev = lerpColor(current, bckgrnd, mix);
+        next = hist[hd][colorIndex+1];
+      } else if (colorIndex < hist[hd].length-2) {
+        prev = hist[hd][colorIndex-1];
+        next = hist[hd][colorIndex+1];
+      } else { 
+        prev = hist[hd][colorIndex-1];
+        next = lerpColor(current, bckgrnd, mix);
+      }
+      current = color(red(current), green(current), blue(current), alpha(current)*max(hd,1)/histDepth);
+      for (int i = 0; i < size; i++) {
+        if (gradient && colorIndex !=0) {
+          if (i < size /4) {
+            stroke(lerpColor(current, prev, 0.5f*i/size));
+          } else if (i > .75f*size) {
+            stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
+          } else {
+            stroke(current);
+          }
+        } else {
+          stroke(current);
+        }
+
+        noFill();
+        pushMatrix();
+        translate(x, y, 0);
+        rotateX(rx);
+        rotateY(ry);
+        rotateZ(rz);
+        if ( hd == 0) {
+          line((i + .5f)*x_scale - w/2.0f, h/2.0f + specHist[hd][1][i], 
+            (i + .5f)*x_scale - w/2.0f, h/2.0f - specHist[hd][1][i]);
+        } else {
+          line((i + .5f)*x_scale - w/2.0f, h/2.0f + splitDist[i] +specHist[hd][1][i], 
+            (i + .5f)*x_scale - w/2.0f, h/2.0f - splitDist[i] - specHist[hd][1][i]);
+        }
+
+        splitDist[i] -= specHist[hd][1][i]*ER;
+        popMatrix();
+      }
+    }
+  }
+}
+
+public class SubVis extends Effect {
+  SubVis(int size, int offset, float hzMult, String type, int h) {
+    super("sub-range visualizer", type, size, offset, hzMult, h);
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
     stroke(picked);
     cp.setColor(type, this.picked);
     float sectionSize = (w/PApplet.parseFloat(size));
@@ -945,8 +1070,8 @@ public class SubVis extends Effect {
 }
 
 public class WaveForm extends Effect {
-  WaveForm(int size, int offset, float hzMult, String type) {
-    super("WaveForm visualizer", type, size, offset, hzMult);
+  WaveForm(int size, int offset, float hzMult, String type, int h) {
+    super("WaveForm visualizer", type, size, offset, hzMult, h);
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
@@ -964,8 +1089,8 @@ public class WaveForm extends Effect {
 }
 
 public class EqRing extends Effect {
-  EqRing(int size, int offset, float hzMult, String type) {
-    super("EqRing visualizer", type, size, offset, hzMult);
+  EqRing(int size, int offset, float hzMult, String type, int h) {
+    super("EqRing visualizer", type, size, offset, hzMult, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -982,15 +1107,17 @@ public class EqRing extends Effect {
     int current = c[colorIndex];
     float t = millis();
     float gmax = spec[1][maxIndex];
-    float s = PI/2.0f+sin((t)*.0002f);
+    float s = sin((t)*.0002f);
 
     float o_rot = -.75f*s;
     float i_rad = 187-5*s;
-    float o_rad = (200-7*s+gmax*3);
+    float o_rad = (i_rad+gmax*5);
 
     stroke(current);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    if (displayMode == "mirrored") {
+    if (spotlightBars) {
+      spotlightBars(_x, _y, i_rad, s);
+    } else if (specDispMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
       bars(_x, _y, i_rad, s);
@@ -1007,7 +1134,7 @@ public class EqRing extends Effect {
     noFill();
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(s+90));
+    rotateX(sin(s));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
@@ -1015,7 +1142,7 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(-(s+90)));
+    rotateX(sin(-(s)));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -1024,14 +1151,14 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(s+90));
+    rotateY(sin(s));
     stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(-(s+90)));
+    rotateY(sin(-(s)));
     //stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -1131,6 +1258,169 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
+  public void tunnel(float _x, float _y, float low, float rot) {
+    int bar_height = 5;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    int bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          int t = lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f));
+          fill(t);
+          stroke(t);
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/PApplet.parseFloat(reps);
+    }
+    popMatrix();
+  }
+
+  public void spotlightBars(float _x, float _y, float low, float rot) {
+    int bar_height = 5;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    int bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f)));
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/PApplet.parseFloat(reps);
+    }
+    popMatrix();
+  }
 
   //creates a ring of outward facing triangles
   public void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
@@ -1204,7 +1494,7 @@ public class EffectManager {
   int picked;
   Effect e;
 
-  public EffectManager(String name,int h, int s, int analysisProps, float hz, int off) {
+  public EffectManager(String name, int h, int s, int analysisProps, float hz, int off) {
     loading++;
     effectName = name;
     size = s;
@@ -1242,31 +1532,31 @@ public class EffectManager {
 
     switch(name) {
     case "all":
-      e = new EqRing(size, offset, hzMult, name);
+      e = new EqRing(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     case "sub": 
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     case "low": 
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     case "mid": 
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     case "upper": 
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     case "high":
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult, name);
+      e = new DefaultVis(size, offset, hzMult, name, histLen);
       e.type="all";
       break;
     }
@@ -1299,20 +1589,24 @@ public class EffectManager {
   protected void switchEffect(String newName) {
     boolean grad = e.gradient;
     switch(newName) {
+    case "expanding":
+      e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
+      e.gradient = grad;
+      break;
     case "mirrored":
-      e = new MirroredVerticalVis(size, offset, hzMult, effectName);
+      e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       e.gradient = grad;
       break;
     case "mirroredALL":
-      e = new MirroredVerticalVis(size, offset, hzMult, effectName);
+      e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       e.gradient = grad;
       break;
     case "default":
-      e = new DefaultVis(size, offset, hzMult, effectName);
+      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
       e.gradient = grad;
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult, effectName);
+      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
       e.gradient = grad;
       break;
     }

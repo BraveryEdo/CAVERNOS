@@ -6,12 +6,15 @@ abstract class Effect {
   int offset;
   float hzMult;
   int maxIndex;
+  int histDepth;
   float[][] spec;
+  float[][][] specHist;
   int[][] sorted;
+  int [][][] sortedHist;
   int colorIndex;
   boolean gradient;
 
-  Effect(String n, String t, int s, int o, float h) {
+  Effect(String n, String t, int s, int o, float h, int hist) {
     setName(n);
     setType(t);
     setColor(color(0, 0, 0));
@@ -19,8 +22,11 @@ abstract class Effect {
     setOffset(o);
     setHzMult(h);
     setMaxIndex(0);
+    histDepth = hist;
     spec = new float[channels][size];
+    specHist = new float[histDepth][channels][size];
     sorted = new int[channels][size];
+    sortedHist = new int[histDepth][channels][size];
     colorIndex = cp.getIndex(t);
     gradient = false;
     println("effect '" + n + "' for range type '" + t + "' loaded");
@@ -48,6 +54,10 @@ abstract class Effect {
     cp.setColor(type, this.picked);
     return picked;
   }
+
+  public int[][] getSorted() {
+    return sorted;
+  }
   public void setSize(int s) { 
     this.size = s;
   }
@@ -62,6 +72,13 @@ abstract class Effect {
   }
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
+    sorted = sort;
+    for (int i = 0; i < histDepth-1; i++) {
+      specHist[i+1] = specHist[i];
+      sortedHist[i+1] = sortedHist[i];
+    }
+    specHist[0] = s;
+    sortedHist[0] = sort;
   }
   public void toggleGradient() { 
     gradient = !gradient;
@@ -69,17 +86,82 @@ abstract class Effect {
 }
 
 
+String gradientMode = "none";
+void mouseClicked() {
+  if (mouseButton == RIGHT) {
+    println("right click");
+    if (gradientMode == "none") {
+      gradientMode = "gradient"; 
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = true;
+      }
+      println("gradients enabled");
+    } else {
+      gradientMode = "none";
+      for (Band b : ap.bands) {
+        b.effectManager.e.gradient = false;
+      }
+      println("gradients disabled");
+    }
+  }
+}
 
+String specDispMode = "default";
+boolean spotlightBars = false;
+void keyPressed() {
+  if (key == 's') {
+    spotlightBars = !spotlightBars;
+    if (spotlightBars) {
+      println("spotlightBars enabled");
+    } else {
+      println("spotlightBars disabled");
+    }
+  } else if (key  == 'd') {
+    if (specDispMode != "default") {
+      specDispMode = "default";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("default spec mode");
+    } else {
+      println("default spec mode already enabled");
+    }
+  } else if (key == 'm') {
+    if (specDispMode != "mirrored") {
+      specDispMode = "mirrored";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("mirrored spec mode");
+    } else {
+      println("mirrored spec mode already enabled");
+    }
+  } else if (key == 'e') {
+    if (specDispMode != "expanding") {
+      specDispMode = "expanding";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("expanding spec mode");
+    } else {
+      println("expanding spec mode already enabled");
+    }
+  }
+}
 
 public class DefaultVis extends Effect {
 
   boolean mirrored = false;
-  float m = 0;
 
-  DefaultVis(int size, int offset, float hzMult, String type) {
-    super("default", type, size, offset, hzMult);
+  DefaultVis(int size, int offset, float hzMult, String type, int h) {
+    super("default", type, size, offset, hzMult, h);
     mirrored = false;
-    m = 0;
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -132,8 +214,8 @@ public class DefaultVis extends Effect {
 
 public class MirroredVerticalVis extends Effect {
 
-  MirroredVerticalVis(int size, int offset, float hzMult, String type) {
-    super("MirroredDefault", type, size, offset, hzMult);
+  MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
+    super("MirroredDefault", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -148,32 +230,38 @@ public class MirroredVerticalVis extends Effect {
     float mix = .15;
 
     cp.setColor(type, this.picked);
-    color[] c = cp.getColors();
+    color [][] hist = cp.getColorHistory();
+    color[] c = hist[0];
     color current, prev, next, bckgrnd;
     current = c[colorIndex];
     bckgrnd = c[0];
+    if (colorIndex == 0) {
+      for (int i = 1; i < hist.length; i++) {
+        current = lerpColor(current, hist[i][colorIndex], .25);
+      }
+      prev = hist[1][colorIndex];
+      next =  hist[0][colorIndex];
+    } else if (colorIndex == 1) {
+      prev = lerpColor(current, bckgrnd, mix);
+      next = c[colorIndex+1];
+    } else if (colorIndex < c.length-2) {
+      prev = c[colorIndex-1];
+      next = c[colorIndex+1];
+    } else { 
+      prev = c[colorIndex-1];
+      next = lerpColor(current, bckgrnd, mix);
+    }
 
     for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) {
+      if (gradient && colorIndex !=0) { 
 
-        if (colorIndex == 1) {
-          prev = lerpColor(current, bckgrnd, mix);
-          next = c[colorIndex+1];
-        } else if (colorIndex < c.length-2) {
-          prev = c[colorIndex-1];
-          next = c[colorIndex+1];
-        } else { 
-          prev = c[colorIndex-1];
-          next = lerpColor(current, bckgrnd, mix);
+        if (i < size /4) {
+          stroke(lerpColor(current, prev, 0.5*i/size));
+        } else if (i > .75*size) {
+          stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
+        } else {
+          stroke(current);
         }
-
-        //if (i < size /4) {
-        //  stroke(lerpColor(lerpColor(prev, current, 0.5*i/size), bckgrnd, mix));
-        //} else if (1 > 3/4*size) {
-        //  stroke(lerpColor(lerpColor(current, next, 0.5*(i-(size/4))/size), bckgrnd, mix));
-        //} else {
-        stroke(lerpColor(picked, bckgrnd, mix));
-        //}
       } else {
         stroke(picked);
       }
@@ -191,15 +279,100 @@ public class MirroredVerticalVis extends Effect {
   }
 }
 
-public class SubVis extends Effect {
-  SubVis(int size, int offset, float hzMult, String type) {
-    super("sub-range visualizer", type, size, offset, hzMult);
+public class ExpandingVis extends Effect {
+
+  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
+    super("ExpandingVis", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {
     float w = (right-left);
     float h = (bottom-top);
-    float mid = (left+right)/2.0;
+
+    this.display(left + w/2.0, bottom - h/2.0, h, w, 0, 0, 0);
+  }
+
+  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+    float mix = .15;
+    float ER = .15+.07*sin(millis()); //expansion reduction
+
+    cp.setColor(type, this.picked);
+    color [][] hist = cp.getColorHistory();
+    color current, prev, next, bckgrnd;
+    bckgrnd = hist[0][0];
+
+    float[] splitDist = new float[size];
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        splitDist[j] = max(specHist[0][1][j], 1);
+      }
+      for (int j = 1; j < histDepth; j++) {
+        splitDist[i] += specHist[j][1][i]*ER;
+      }
+    }
+
+    for (int hd = histDepth-1; hd >= 0; hd--) {
+      current = hist[hd][colorIndex];
+      if (colorIndex == 0) {
+        for (int i = 1; i < hist.length; i++) {
+          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
+        }
+        prev = hist[1][colorIndex];
+        next =  hist[0][colorIndex];
+      } else if (colorIndex == 1) {
+        prev = lerpColor(current, bckgrnd, mix);
+        next = hist[hd][colorIndex+1];
+      } else if (colorIndex < hist[hd].length-2) {
+        prev = hist[hd][colorIndex-1];
+        next = hist[hd][colorIndex+1];
+      } else { 
+        prev = hist[hd][colorIndex-1];
+        next = lerpColor(current, bckgrnd, mix);
+      }
+      current = color(red(current), green(current), blue(current), alpha(current)*max(hd,1)/histDepth);
+      for (int i = 0; i < size; i++) {
+        if (gradient && colorIndex !=0) {
+          if (i < size /4) {
+            stroke(lerpColor(current, prev, 0.5*i/size));
+          } else if (i > .75*size) {
+            stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
+          } else {
+            stroke(current);
+          }
+        } else {
+          stroke(current);
+        }
+
+        noFill();
+        pushMatrix();
+        translate(x, y, 0);
+        rotateX(rx);
+        rotateY(ry);
+        rotateZ(rz);
+        if ( hd == 0) {
+          line((i + .5)*x_scale - w/2.0, h/2.0 + specHist[hd][1][i], 
+            (i + .5)*x_scale - w/2.0, h/2.0 - specHist[hd][1][i]);
+        } else {
+          line((i + .5)*x_scale - w/2.0, h/2.0 + splitDist[i] +specHist[hd][1][i], 
+            (i + .5)*x_scale - w/2.0, h/2.0 - splitDist[i] - specHist[hd][1][i]);
+        }
+
+        splitDist[i] -= specHist[hd][1][i]*ER;
+        popMatrix();
+      }
+    }
+  }
+}
+
+public class SubVis extends Effect {
+  SubVis(int size, int offset, float hzMult, String type, int h) {
+    super("sub-range visualizer", type, size, offset, hzMult, h);
+  }
+
+  void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
     stroke(picked);
     cp.setColor(type, this.picked);
     float sectionSize = (w/float(size));
@@ -213,8 +386,8 @@ public class SubVis extends Effect {
 }
 
 public class WaveForm extends Effect {
-  WaveForm(int size, int offset, float hzMult, String type) {
-    super("WaveForm visualizer", type, size, offset, hzMult);
+  WaveForm(int size, int offset, float hzMult, String type, int h) {
+    super("WaveForm visualizer", type, size, offset, hzMult, h);
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
@@ -232,8 +405,8 @@ public class WaveForm extends Effect {
 }
 
 public class EqRing extends Effect {
-  EqRing(int size, int offset, float hzMult, String type) {
-    super("EqRing visualizer", type, size, offset, hzMult);
+  EqRing(int size, int offset, float hzMult, String type, int h) {
+    super("EqRing visualizer", type, size, offset, hzMult, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -250,15 +423,17 @@ public class EqRing extends Effect {
     color current = c[colorIndex];
     float t = millis();
     float gmax = spec[1][maxIndex];
-    float s = PI/2.0+sin((t)*.0002);
+    float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
     float i_rad = 187-5*s;
-    float o_rad = (200-7*s+gmax*3);
+    float o_rad = (i_rad+gmax*5);
 
     stroke(current);
     ring(_x, _y, nbars, i_rad, o_rot, false);
-    if (displayMode == "mirrored") {
+    if (spotlightBars) {
+      spotlightBars(_x, _y, i_rad, s);
+    } else if (specDispMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
       bars(_x, _y, i_rad, s);
@@ -275,7 +450,7 @@ public class EqRing extends Effect {
     noFill();
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(s+90));
+    rotateX(sin(s));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
@@ -283,7 +458,7 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateX(sin(-(s+90)));
+    rotateX(sin(-(s)));
     stroke(lerp1);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -292,14 +467,14 @@ public class EqRing extends Effect {
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(s+90));
+    rotateY(sin(s));
     stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
     popMatrix();
 
     pushMatrix();
     translate(_x, _y, 0);
-    rotateY(sin(-(s+90)));
+    rotateY(sin(-(s)));
     //stroke(lerp2);
     ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
     popMatrix();
@@ -399,6 +574,169 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
+  void tunnel(float _x, float _y, float low, float rot) {
+    int bar_height = 5;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    color bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          color t = lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75-.25*sin(millis()*.002));
+          fill(t);
+          stroke(t);
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/float(reps);
+    }
+    popMatrix();
+  }
+
+  void spotlightBars(float _x, float _y, float low, float rot) {
+    int bar_height = 5;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(_x, _y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    color bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (low*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75-.25*sin(millis()*.002)));
+          rect(0, s+low + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/float(reps);
+    }
+    popMatrix();
+  }
 
   //creates a ring of outward facing triangles
   void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {

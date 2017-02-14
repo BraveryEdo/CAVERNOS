@@ -4,6 +4,7 @@ import ddf.minim.analysis.*;
 
 
 
+int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
 
@@ -36,50 +37,11 @@ void draw() {
     text("Loading...", width/2.0, height/2.0);
   } else {
     ap.display();
-  }
-}
-
-
-String displayMode = "default";
-String gradientMode = "none";
-void mouseClicked() {
-  if (mouseButton  == LEFT) {
-    println("left click");
-    if (displayMode == "default") {
-      displayMode = "mirrored";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(displayMode);
-        } else {
-          // b.effectManager.switchEffect(displayMode+"ALL");
-        }
-      }
-      println("mirrored mode");
-    } else {
-      displayMode = "default";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(displayMode);
-        } else {
-          // b.effectManager.switchEffect(displayMode+"ALL");
-        }
-      }
-      println("default mode");
-    }
-  } else if(mouseButton == RIGHT){
-    println("right click");
-    if(gradientMode == "none"){
-       gradientMode = "gradient"; 
-       for (Band b : ap.bands) {
-        b.effectManager.e.gradient = true; 
-       }
-       println("gradients enabled");
-    } else {
-      gradientMode = "none";
-             for (Band b : ap.bands) {
-        b.effectManager.e.gradient = false; 
-       }
-      println("gradients disabled");
+    if (millis() < 5000) {
+      textAlign(CENTER);
+      textSize(32);
+      fill((5000-millis())/42);
+      text("Press F1 for menu", width/2.0, height/4.0);
     }
   }
 }

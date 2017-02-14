@@ -9,9 +9,7 @@ public class AudioProcessor {
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
   int specSize = 2048;
-  int histDepth = 16;
   float[][] magnitude;
-  float[][][] history;
 
   ////ranges are based on a sample frequency of 8192 (2^13) 
   //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -28,7 +26,7 @@ public class AudioProcessor {
   //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
 
   float mult = float(specSize)/float(sampleRate);
-  float hzMult = float(sampleRate)/float(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
+  float hzMult = float(sampleRate)/float(specSize);  //the equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
 
   int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
   int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
@@ -55,7 +53,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    history = new float[histDepth][channels][specSize];
     logicRate = lr;
     lastLogicUpdate = millis();
 
@@ -63,13 +60,6 @@ public class AudioProcessor {
     //update audio buffer
     rfft.forward(in.right);
     lfft.forward(in.left);
-
-    //float left_bin = lfft.getBand(i);
-    //float right_bin = rfft.getBand(i);
-    //float  mix_bin = (left_bin+right_bin)/2.0;
-    //magnitude[0][i] = left_bin;
-    //magnitude[1][i] = mix_bin;
-    //magnitude[2][i] = right_bin;
 
     float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
       Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
@@ -125,23 +115,23 @@ public class AudioProcessor {
   }
 
   void display() {
-    if (displayMode == "default") {
+    if (specDispMode == "default") {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
           bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
         } else {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/ap.bands.length));
+          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
         }
       }
     } else {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
-          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
+          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/(ap.bands.length-1)));
         } else {
           float x = width/2.0;
-          float w = height/ap.bands.length;
+          float w = height/(ap.bands.length-1);
           float y = height-w*(i+.5);
-          float h = width/ap.bands.length;
+          float h = width/(ap.bands.length-1);
 
           bands[i].display(x-h/2.0, y, h, w, 0, 0, -PI/2);
           bands[i].display(x+h/2.0, y, h, w, PI, 0, PI/2);
@@ -177,7 +167,7 @@ public class AudioProcessor {
     } else {
       //scale up size
       float[][] t = new float[channels][size];
-      float n = float(size)/float(in[1].length);
+      float n = ceil(float(size)/float(in[1].length));
       int count = 0;
       for (int i = 0; i < in[1].length - 1; i ++) {
         //left/mid/right channels
@@ -203,7 +193,7 @@ public class AudioProcessor {
         last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
-        float mix = float(j)/n;
+        float mix = float(max(j-1,1))/n;
         l = lerp(l, last[0], mix);
         m = lerp(m, last[1], mix);
         r = lerp(r, last[2], mix);
@@ -255,6 +245,13 @@ public class AudioProcessor {
         } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if( max < 20 && max > 5){
+           for (int i = 0; i < specSize; i++) {
+            float scale = 50.0/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
             }
