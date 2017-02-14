@@ -26,7 +26,7 @@ public class AudioProcessor {
   //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
 
   float mult = float(specSize)/float(sampleRate);
-  float hzMult = float(sampleRate)/float(specSize);  //fthe equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
+  float hzMult = float(sampleRate)/float(specSize);  //the equivalent frequency of the i-th bin: freq = i * Fs / N, here Fs = sample rate (Hz) and N = number of points in FFT.
 
   int[] subRange = {floor(bottomLimit[0]*mult), floor(topLimit[0]*mult)};
   int[] lowRange = {floor(bottomLimit[1]*mult), floor(topLimit[1]*mult)};
@@ -126,10 +126,10 @@ public class AudioProcessor {
     } else {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
-          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
+          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/(ap.bands.length-1)));
         } else {
           float x = width/2.0;
-          float w = height/ap.bands.length;
+          float w = height/(ap.bands.length-1);
           float y = height-w*(i+.5);
           float h = width/(ap.bands.length-1);
 
@@ -167,7 +167,7 @@ public class AudioProcessor {
     } else {
       //scale up size
       float[][] t = new float[channels][size];
-      float n = float(size)/float(in[1].length);
+      float n = ceil(float(size)/float(in[1].length));
       int count = 0;
       for (int i = 0; i < in[1].length - 1; i ++) {
         //left/mid/right channels
@@ -193,7 +193,7 @@ public class AudioProcessor {
         last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
-        float mix = float(j)/n;
+        float mix = float(max(j-1,1))/n;
         l = lerp(l, last[0], mix);
         m = lerp(m, last[1], mix);
         r = lerp(r, last[2], mix);

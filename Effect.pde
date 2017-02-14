@@ -308,7 +308,7 @@ public class ExpandingVis extends Effect {
         splitDist[j] = max(specHist[0][1][j], 1);
       }
       for (int j = 1; j < histDepth; j++) {
-        splitDist[i] += max(specHist[j][1][i], 1)*ER;
+        splitDist[i] += specHist[j][1][i]*ER;
       }
     }
 
@@ -316,7 +316,7 @@ public class ExpandingVis extends Effect {
       current = hist[hd][colorIndex];
       if (colorIndex == 0) {
         for (int i = 1; i < hist.length; i++) {
-          current = lerpColor(current, hist[i][colorIndex], .25);
+          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
         }
         prev = hist[1][colorIndex];
         next =  hist[0][colorIndex];
@@ -330,7 +330,7 @@ public class ExpandingVis extends Effect {
         prev = hist[hd][colorIndex-1];
         next = lerpColor(current, bckgrnd, mix);
       }
-      current = color(red(current), green(current), blue(current), alpha(current)*(hd)/histDepth);
+      current = color(red(current), green(current), blue(current), alpha(current)*max(hd,1)/histDepth);
       for (int i = 0; i < size; i++) {
         if (gradient && colorIndex !=0) {
           if (i < size /4) {
@@ -373,7 +373,6 @@ public class SubVis extends Effect {
   void display(float left, float top, float right, float bottom) {
     float w = (right-left);
     float h = (bottom-top);
-    float mid = (left+right)/2.0;
     stroke(picked);
     cp.setColor(type, this.picked);
     float sectionSize = (w/float(size));
