@@ -1,7 +1,7 @@
 import java.util.Arrays;
 import ddf.minim.*;
 import ddf.minim.analysis.*;
-
+import static java.awt.event.KeyEvent.*;
 
 
 int histSize = 32;

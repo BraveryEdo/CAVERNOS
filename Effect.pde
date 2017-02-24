@@ -109,7 +109,14 @@ void mouseClicked() {
 String specDispMode = "default";
 boolean spotlightBars = false;
 void keyPressed() {
-  if (key == 's') {
+  if(key == CODED){
+    if(keyCode == VK_F1){
+       println("F1 menu shown");
+       println("F1 menu hidden");
+    } else {
+       println("unhandled keyCode: " + keyCode); 
+    }
+  } else if (key == 's') {
     spotlightBars = !spotlightBars;
     if (spotlightBars) {
       println("spotlightBars enabled");
@@ -152,6 +159,9 @@ void keyPressed() {
     } else {
       println("expanding spec mode already enabled");
     }
+  } else {
+     println("unhandled key: " + key);
+     
   }
 }
 
@@ -172,12 +182,12 @@ public class DefaultVis extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/size;   
+    float x_scale = w/((type == "sub")?size-1:size);   
     cp.setColor(type, this.picked);
     color[] c = cp.getColors();
     color current, prev, next;
     current = c[colorIndex];
-    for (int i = 0; i < size; i++) {
+    for (int i = (type == "sub")?1:0 ; i < size; i++) {
       if (gradient && colorIndex != 0) {
         if (colorIndex == 1) {
           prev = current;
@@ -203,8 +213,8 @@ public class DefaultVis extends Effect {
       rotateX(rx);
       rotateY(ry);
       rotateZ(rz);
-
-      line( (i + .5)*x_scale - w/2.0, h/2.0, (i + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+      int it = (type == "sub")?i -1:i;
+      line( (it + .5)*x_scale - w/2.0, h/2.0, (it + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
 
       popMatrix();
     }
@@ -305,12 +315,16 @@ public class ExpandingVis extends Effect {
     float[] splitDist = new float[size];
     for (int i = 0; i < size; i++) {
       for (int j = 0; j < size; j++) {
-        splitDist[j] = max(specHist[0][1][j], 1);
+        splitDist[j] = specHist[0][1][j];
       }
       for (int j = 1; j < histDepth; j++) {
         splitDist[i] += specHist[j][1][i]*ER;
       }
     }
+    for(int i = 0; i < histDepth; i++){
+      splitDist[size-1] = lerp(splitDist[size-1],splitDist[size-2],.5);
+    }
+
 
     for (int hd = histDepth-1; hd >= 0; hd--) {
       current = hist[hd][colorIndex];
@@ -330,7 +344,7 @@ public class ExpandingVis extends Effect {
         prev = hist[hd][colorIndex-1];
         next = lerpColor(current, bckgrnd, mix);
       }
-      current = color(red(current), green(current), blue(current), alpha(current)*max(hd,1)/histDepth);
+      current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
       for (int i = 0; i < size; i++) {
         if (gradient && colorIndex !=0) {
           if (i < size /4) {
