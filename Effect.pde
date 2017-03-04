@@ -85,86 +85,6 @@ abstract class Effect {
   }
 }
 
-
-String gradientMode = "none";
-void mouseClicked() {
-  if (mouseButton == RIGHT) {
-    println("right click");
-    if (gradientMode == "none") {
-      gradientMode = "gradient"; 
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = true;
-      }
-      println("gradients enabled");
-    } else {
-      gradientMode = "none";
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = false;
-      }
-      println("gradients disabled");
-    }
-  }
-}
-
-String specDispMode = "default";
-boolean spotlightBars = false;
-void keyPressed() {
-  if(key == CODED){
-    if(keyCode == VK_F1){
-       println("F1 menu shown");
-       println("F1 menu hidden");
-    } else {
-       println("unhandled keyCode: " + keyCode); 
-    }
-  } else if (key == 's') {
-    spotlightBars = !spotlightBars;
-    if (spotlightBars) {
-      println("spotlightBars enabled");
-    } else {
-      println("spotlightBars disabled");
-    }
-  } else if (key  == 'd') {
-    if (specDispMode != "default") {
-      specDispMode = "default";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("default spec mode");
-    } else {
-      println("default spec mode already enabled");
-    }
-  } else if (key == 'm') {
-    if (specDispMode != "mirrored") {
-      specDispMode = "mirrored";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("mirrored spec mode");
-    } else {
-      println("mirrored spec mode already enabled");
-    }
-  } else if (key == 'e') {
-    if (specDispMode != "expanding") {
-      specDispMode = "expanding";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("expanding spec mode");
-    } else {
-      println("expanding spec mode already enabled");
-    }
-  } else {
-     println("unhandled key: " + key);
-     
-  }
-}
-
 public class DefaultVis extends Effect {
 
   boolean mirrored = false;
@@ -184,10 +104,11 @@ public class DefaultVis extends Effect {
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     float x_scale = w/((type == "sub")?size-1:size);   
     cp.setColor(type, this.picked);
+    strokeWeight(1);
     color[] c = cp.getColors();
     color current, prev, next;
     current = c[colorIndex];
-    for (int i = (type == "sub")?1:0 ; i < size; i++) {
+    for (int i = (type == "sub")?1:0; i < size; i++) {
       if (gradient && colorIndex != 0) {
         if (colorIndex == 1) {
           prev = current;
@@ -240,6 +161,7 @@ public class MirroredVerticalVis extends Effect {
     float mix = .15;
 
     cp.setColor(type, this.picked);
+    strokeWeight(1);
     color [][] hist = cp.getColorHistory();
     color[] c = hist[0];
     color current, prev, next, bckgrnd;
@@ -308,6 +230,7 @@ public class ExpandingVis extends Effect {
     float ER = .15+.07*sin(millis()); //expansion reduction
 
     cp.setColor(type, this.picked);
+    strokeWeight(1);
     color [][] hist = cp.getColorHistory();
     color current, prev, next, bckgrnd;
     bckgrnd = hist[0][0];
@@ -321,8 +244,8 @@ public class ExpandingVis extends Effect {
         splitDist[i] += specHist[j][1][i]*ER;
       }
     }
-    for(int i = 0; i < histDepth; i++){
-      splitDist[size-1] = lerp(splitDist[size-1],splitDist[size-2],.5);
+    for (int i = 0; i < histDepth; i++) {
+      splitDist[size-1] = lerp(splitDist[size-1], splitDist[size-2], .5);
     }
 
 
@@ -388,6 +311,7 @@ public class SubVis extends Effect {
     float w = (right-left);
     float h = (bottom-top);
     stroke(picked);
+    strokeWeight(1);
     cp.setColor(type, this.picked);
     float sectionSize = (w/float(size));
     for (int i = 0; i < size; i++) {
@@ -399,24 +323,6 @@ public class SubVis extends Effect {
   }
 }
 
-public class WaveForm extends Effect {
-  WaveForm(int size, int offset, float hzMult, String type, int h) {
-    super("WaveForm visualizer", type, size, offset, hzMult, h);
-  }
-
-  void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-
-    cp.setColor(type, this.picked);
-  }
-
-  void display(float left, float top, float right, float bottom) {
-
-    float _x = left+(right - left)/2.0;
-    float _y = top-(top - bottom)/2.0;
-
-    this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
-  }
-}
 
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
@@ -432,7 +338,17 @@ public class EqRing extends Effect {
 
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
+
+    if (waveForm) {
+      noCursor();
+      waveForm(mouseX, mouseY, waveH, waveW, 0, 0, 0);
+    } else {
+      cursor(); 
+    }
+
+
     cp.setColor(type, this.picked);
+    strokeWeight(1);
     color[] c = cp.getColors();
     color current = c[colorIndex];
     float t = millis();
@@ -444,6 +360,7 @@ public class EqRing extends Effect {
     float o_rad = (i_rad+gmax*5);
 
     stroke(current);
+
     ring(_x, _y, nbars, i_rad, o_rot, false);
     if (spotlightBars) {
       spotlightBars(_x, _y, i_rad, s);
@@ -504,6 +421,8 @@ public class EqRing extends Effect {
 
     this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
   }
+
+
 
   void bars(float _x, float _y, float low, float rot) {
 
@@ -585,6 +504,35 @@ public class EqRing extends Effect {
 
       a+= angle;
     }
+    popMatrix();
+  }
+  
+    void waveForm(float x, float y, float h, float w, float rx, float ry, float rz) {
+    //stroke(picked);
+    color[] c = cp.getColors();
+    color current = c[colorIndex];
+    stroke(current);
+    strokeWeight(3);
+    pushMatrix();
+    translate(x-ceil(w)/2.0, y-h/2.0);
+    rotateX(rx);
+    rotateY(ry);
+    rotateZ(rz);
+    float max = spec[1][sorted[1][0]];
+    float hScale = h/max(max,1);
+    float wScale = ceil(w)/TWO_PI;
+    PShape s = createShape();
+    s.beginShape();
+    for (float i = 0; i < ceil(w); i+=.25) {
+      float adder = 0;
+      for (int j = 0; j < 12; j++) {
+        float jHz = hzMult * (spec[1][sorted[1][j]] * size + offset);
+        adder += sin(i*wScale*jHz);
+      }
+      s.curveVertex(i*wScale, adder*hScale);
+    }
+    s.endShape();
+    shape(s,w/2.0, h/2.0);
     popMatrix();
   }
 

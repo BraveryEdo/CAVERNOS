@@ -41,7 +41,7 @@ void draw() {
       textAlign(CENTER);
       textSize(32);
       fill((5000-millis())/42);
-      text("Press F1 for menu", width/2.0, height/4.0);
+      text("MENU coming soon...", width/2.0, height/4.0);
     }
   }
 }
