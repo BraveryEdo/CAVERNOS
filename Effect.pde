@@ -341,9 +341,9 @@ public class EqRing extends Effect {
 
     if (waveForm) {
       noCursor();
-      waveForm(mouseX, mouseY, waveH, waveW, 0, 0, 0);
+      waveForm(width/2, mouseY, waveH, waveW, 0, 0, 0);
     } else {
-      cursor(); 
+      cursor();
     }
 
 
@@ -506,33 +506,33 @@ public class EqRing extends Effect {
     }
     popMatrix();
   }
-  
-    void waveForm(float x, float y, float h, float w, float rx, float ry, float rz) {
+
+  void waveForm(float x, float y, float h, float w, float rx, float ry, float rz) {
     //stroke(picked);
     color[] c = cp.getColors();
     color current = c[colorIndex];
     stroke(current);
-    strokeWeight(3);
+    strokeWeight(1);
+    noFill();
     pushMatrix();
-    translate(x-ceil(w)/2.0, y-h/2.0);
+    translate(x-w/2.0, y-h/2.0);
     rotateX(rx);
     rotateY(ry);
     rotateZ(rz);
     float max = spec[1][sorted[1][0]];
-    float hScale = h/max(max,1);
-    float wScale = ceil(w)/TWO_PI;
+    float hScale = h/max(max, 1);
     PShape s = createShape();
     s.beginShape();
-    for (float i = 0; i < ceil(w); i+=.25) {
+    for (float i = 0; i < w; i+=3*    w/width) {
       float adder = 0;
-      for (int j = 0; j < 12; j++) {
-        float jHz = hzMult * (spec[1][sorted[1][j]] * size + offset);
-        adder += sin(i*wScale*jHz);
+      for (int j = 0; j < sorted[1].length/*sorted[1].length/10*/; j++) {
+        float jHz = hzMult * (sorted[1][j] * size + offset);
+        adder += sin(i*jHz*max(1,sorted[1][0]+1))*(spec[1][sorted[1][j]]*hScale);
       }
-      s.curveVertex(i*wScale, adder*hScale);
+      s.curveVertex(i*width/w - width/2, adder/(sorted[1].length/4));
     }
     s.endShape();
-    shape(s,w/2.0, h/2.0);
+    shape(s, w/2.0, h/2.0);
     popMatrix();
   }
 

@@ -20,11 +20,11 @@ void mouseClicked() {
 }
 
 String specDispMode = "default";
-boolean spotlightBars = false;
-boolean waveForm = false;
-float waveW = 70;
+boolean spotlightBars = true;
+boolean waveForm = true;
+float waveW = 1;
 float waveH = 50;
-float step = 10;
+float step = 2;
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == VK_F1) {
@@ -36,12 +36,14 @@ void keyPressed() {
     } else if(keyCode == DOWN){
       println("DOWN arrow key");
       waveH -= step;
+      waveH = max(waveH, 1);
     } else if(keyCode == LEFT){
       println("LEFT arrow key");
-      waveW -= step;
+      waveW /= step;
+      //waveW = max(waveW, 1/2^10);
     } else if(keyCode == RIGHT){
       println("RIGHT arrow key");
-      waveW += step;
+      waveW *= step;
     } else {
       println("unhandled keyCode: " + keyCode);
     }
