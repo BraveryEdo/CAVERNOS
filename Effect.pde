@@ -525,7 +525,7 @@ public class EqRing extends Effect {
     s.beginShape();
     for (float i = 0; i < w; i+=3*    w/width) {
       float adder = 0;
-      for (int j = 0; j < sorted[1].length/*sorted[1].length/10*/; j++) {
+      for (int j = 0; j < sorted[1].length/10; j++) {
         float jHz = hzMult * (sorted[1][j] * size + offset);
         adder += sin(i*jHz*max(1,sorted[1][0]+1))*(spec[1][sorted[1][j]]*hScale);
       }

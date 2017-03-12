@@ -1,7 +1,7 @@
 import java.util.Arrays;
 import ddf.minim.*;
 import ddf.minim.analysis.*;
-
+import static java.awt.event.KeyEvent.*;
 
 
 int histSize = 32;
@@ -17,7 +17,8 @@ int loading = 0;
 
 void setup() {
   loading++;
-  size(1000, 700, P3D);
+  //size(1000, 700, P3D);
+fullScreen(P3D);
   background(255);
   frameRate(240);
   rectMode(CORNERS);
@@ -41,7 +42,7 @@ void draw() {
       textAlign(CENTER);
       textSize(32);
       fill((5000-millis())/42);
-      text("Press F1 for menu", width/2.0, height/4.0);
+      text("MENU coming soon...", width/2.0, height/4.0);
     }
   }
 }
