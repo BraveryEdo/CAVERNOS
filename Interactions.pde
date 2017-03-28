@@ -21,29 +21,23 @@ void mouseClicked() {
 
 String specDispMode = "default";
 boolean spotlightBars = true;
-boolean waveForm = true;
-float waveW = 1;
-float waveH = 50;
-float step = 2;
+boolean ringWave = false;
+String[] waveTypes = {"additive", "multi", "disabled"};
+String waveForm = waveTypes[0];
+float ringW = 350;
+float step = 1.618;
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == VK_F1) {
       println("F1 menu shown");
       println("F1 menu hidden");
-    } else if(keyCode == UP){
+    } else if (keyCode == UP) {
       println("UP arrow key");
-      waveH += step;
-    } else if(keyCode == DOWN){
+      ringW += step;
+    } else if (keyCode == DOWN) {
       println("DOWN arrow key");
-      waveH -= step;
-      waveH = max(waveH, 1);
-    } else if(keyCode == LEFT){
-      println("LEFT arrow key");
-      waveW /= step;
-      //waveW = max(waveW, 1/2^10);
-    } else if(keyCode == RIGHT){
-      println("RIGHT arrow key");
-      waveW *= step;
+      ringW -= step;
+      if(ringW < 0){ ringW+=step;}
     } else {
       println("unhandled keyCode: " + keyCode);
     }
@@ -91,11 +85,14 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == 'w') {
-    waveForm = !waveForm;
-    if (waveForm) {      
-      println("waveForm enabled");
+      waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
+      println("waveForm set to: " + waveForm);
+  } else if (key == 'r') {
+    ringWave = !ringWave;
+    if (ringWave) {
+      println("ringWave enabled");
     } else {
-      println("waveForm disabled");
+      println("ringWave disabled");
     }
   } else {
     println("unhandled key: " + key);
