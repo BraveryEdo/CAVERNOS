@@ -335,13 +335,13 @@ public class EqRing extends Effect {
   float pad = 25;
   int nbars = size;
   color lastPicked = picked;
-
+  float waveH = 100;
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
 
-    if (waveForm) {
+    if (waveForm != "disabled") {
       noCursor();
-      waveForm(width/2, mouseY, waveH, waveW, 0, 0, 0);
+      waveForm(0, mouseY, waveH, 0, 0, 0);
     } else {
       cursor();
     }
@@ -507,33 +507,65 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
-  void waveForm(float x, float y, float h, float w, float rx, float ry, float rz) {
-    //stroke(picked);
-    color[] c = cp.getColors();
-    color current = c[colorIndex];
-    stroke(current);
-    strokeWeight(1);
-    noFill();
-    pushMatrix();
-    translate(x-w/2.0, y-h/2.0);
-    rotateX(rx);
-    rotateY(ry);
-    rotateZ(rz);
-    float max = spec[1][sorted[1][0]];
-    float hScale = h/max(max, 1);
-    PShape s = createShape();
-    s.beginShape();
-    for (float i = 0; i < w; i+=3*    w/width) {
-      float adder = 0;
-      for (int j = 0; j < sorted[1].length/10; j++) {
-        float jHz = hzMult * (sorted[1][j] * size + offset);
-        adder += sin(i*jHz*max(1,sorted[1][0]+1))*(spec[1][sorted[1][j]]*hScale);
+  void waveForm(float x, float y, float h, float rx, float ry, float rz) {
+    int wDepth = sorted[1].length/10;
+    if (waveForm == waveTypes[0]) {
+      //additive
+      color[] c = cp.getColors();
+      color current = c[colorIndex];
+      stroke(current);
+      strokeWeight(1);
+      noFill();
+      pushMatrix();
+      translate(x, y);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      float max = spec[1][sorted[1][0]];
+      float hScale = h/max(max, 1);
+      PShape s = createShape();
+      s.beginShape();
+      s.curveVertex(0, 0);
+      
+      float wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(4))+1), 1);
+      for (float i = 0; i < width; i+= wScale) {
+        float adder = 0;
+        for (int j = 0; j < wDepth; j++) {
+          float jHz = hzMult * (sorted[1][j] * size + offset);
+          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
+        }
+        s.curveVertex(i*wScale, adder/(sorted[1].length/4));
       }
-      s.curveVertex(i*width/w - width/2, adder/(sorted[1].length/4));
+      s.curveVertex(width, 0);
+      s.endShape();
+      shape(s, 0, 0);
+      popMatrix();
+    } else if (waveForm == waveTypes[0]) {
+      //multi
+      float maxi = spec[1][sorted[1][0]];
+      for (int i = 0; i < wDepth; i++) {
+        float intensity = spec[1][sorted[1][i]];
+        float r = intensity/maxi;
+        float iHz = hzMult * (sorted[1][i] * size + offset);
+        color q = calcColor(sorted[1][i]);
+        color c = color(red(q), green(q), blue(q), lerp(0, 255, r));
+        stroke(q);
+        strokeWeight(r/64);
+        noFill();
+        pushMatrix();
+        translate(x, y);
+        rotateX(rx);
+        rotateY(ry);
+        rotateZ(rz);
+        PShape s = createShape();
+        //for(int j = 0; j  < w; i+= w){
+        //  s.curveVertex(i*width/w - width/2, sin(i*iHz)*r*h);
+        //}
+        s.endShape();
+        shape(s, 0, 0);
+        popMatrix();
+      }
     }
-    s.endShape();
-    shape(s, w/2.0, h/2.0);
-    popMatrix();
   }
 
   void tunnel(float _x, float _y, float low, float rot) {

@@ -25,6 +25,8 @@ public class CAVERNOS extends PApplet {
 
 
 
+
+
 int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
@@ -1020,13 +1022,13 @@ public class EqRing extends Effect {
   float pad = 25;
   int nbars = size;
   int lastPicked = picked;
-
+  float waveH = 100;
 
   public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
 
-    if (waveForm) {
+    if (waveForm != "disabled") {
       noCursor();
-      waveForm(width/2, mouseY, waveH, waveW, 0, 0, 0);
+      waveForm(0, mouseY, waveH, 0, 0, 0);
     } else {
       cursor();
     }
@@ -1192,33 +1194,65 @@ public class EqRing extends Effect {
     popMatrix();
   }
 
-  public void waveForm(float x, float y, float h, float w, float rx, float ry, float rz) {
-    //stroke(picked);
-    int[] c = cp.getColors();
-    int current = c[colorIndex];
-    stroke(current);
-    strokeWeight(1);
-    noFill();
-    pushMatrix();
-    translate(x-w/2.0f, y-h/2.0f);
-    rotateX(rx);
-    rotateY(ry);
-    rotateZ(rz);
-    float max = spec[1][sorted[1][0]];
-    float hScale = h/max(max, 1);
-    PShape s = createShape();
-    s.beginShape();
-    for (float i = 0; i < w; i+=3*    w/width) {
-      float adder = 0;
-      for (int j = 0; j < sorted[1].length/10; j++) {
-        float jHz = hzMult * (sorted[1][j] * size + offset);
-        adder += sin(i*jHz*max(1,sorted[1][0]+1))*(spec[1][sorted[1][j]]*hScale);
+  public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
+    int wDepth = sorted[1].length/10;
+    if (waveForm == waveTypes[0]) {
+      //additive
+      int[] c = cp.getColors();
+      int current = c[colorIndex];
+      stroke(current);
+      strokeWeight(1);
+      noFill();
+      pushMatrix();
+      translate(x, y);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      float max = spec[1][sorted[1][0]];
+      float hScale = h/max(max, 1);
+      PShape s = createShape();
+      s.beginShape();
+      s.curveVertex(0, 0);
+      
+      float wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(4))+1), 1);
+      for (float i = 0; i < width; i+= wScale) {
+        float adder = 0;
+        for (int j = 0; j < wDepth; j++) {
+          float jHz = hzMult * (sorted[1][j] * size + offset);
+          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
+        }
+        s.curveVertex(i*wScale, adder/(sorted[1].length/4));
       }
-      s.curveVertex(i*width/w - width/2, adder/(sorted[1].length/4));
+      s.curveVertex(width, 0);
+      s.endShape();
+      shape(s, 0, 0);
+      popMatrix();
+    } else if (waveForm == waveTypes[0]) {
+      //multi
+      float maxi = spec[1][sorted[1][0]];
+      for (int i = 0; i < wDepth; i++) {
+        float intensity = spec[1][sorted[1][i]];
+        float r = intensity/maxi;
+        float iHz = hzMult * (sorted[1][i] * size + offset);
+        int q = calcColor(sorted[1][i]);
+        int c = color(red(q), green(q), blue(q), lerp(0, 255, r));
+        stroke(q);
+        strokeWeight(r/64);
+        noFill();
+        pushMatrix();
+        translate(x, y);
+        rotateX(rx);
+        rotateY(ry);
+        rotateZ(rz);
+        PShape s = createShape();
+        //for(int j = 0; j  < w; i+= w){
+        //  s.curveVertex(i*width/w - width/2, sin(i*iHz)*r*h);
+        //}
+        s.endShape();
+        shape(s, 0, 0);
+        popMatrix();
+      }
     }
-    s.endShape();
-    shape(s, w/2.0f, h/2.0f);
-    popMatrix();
   }
 
   public void tunnel(float _x, float _y, float low, float rot) {
@@ -1617,29 +1651,23 @@ public void mouseClicked() {
 
 String specDispMode = "default";
 boolean spotlightBars = true;
-boolean waveForm = true;
-float waveW = 1;
-float waveH = 50;
-float step = 2;
+boolean ringWave = false;
+String[] waveTypes = {"additive", "multi", "disabled"};
+String waveForm = waveTypes[0];
+float ringW = 350;
+float step = 1.618f;
 public void keyPressed() {
   if (key == CODED) {
     if (keyCode == VK_F1) {
       println("F1 menu shown");
       println("F1 menu hidden");
-    } else if(keyCode == UP){
+    } else if (keyCode == UP) {
       println("UP arrow key");
-      waveH += step;
-    } else if(keyCode == DOWN){
+      ringW += step;
+    } else if (keyCode == DOWN) {
       println("DOWN arrow key");
-      waveH -= step;
-      waveH = max(waveH, 1);
-    } else if(keyCode == LEFT){
-      println("LEFT arrow key");
-      waveW /= step;
-      //waveW = max(waveW, 1/2^10);
-    } else if(keyCode == RIGHT){
-      println("RIGHT arrow key");
-      waveW *= step;
+      ringW -= step;
+      if(ringW < 0){ ringW+=step;}
     } else {
       println("unhandled keyCode: " + keyCode);
     }
@@ -1687,11 +1715,14 @@ public void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == 'w') {
-    waveForm = !waveForm;
-    if (waveForm) {      
-      println("waveForm enabled");
+      waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
+      println("waveForm set to: " + waveForm);
+  } else if (key == 'r') {
+    ringWave = !ringWave;
+    if (ringWave) {
+      println("ringWave enabled");
     } else {
-      println("waveForm disabled");
+      println("ringWave disabled");
     }
   } else {
     println("unhandled key: " + key);
