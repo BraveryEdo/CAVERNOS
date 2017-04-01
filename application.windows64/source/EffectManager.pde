@@ -55,29 +55,29 @@ public class EffectManager {
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
-    case "sub": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "low": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "mid": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "upper": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "high":
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
+    //case "sub": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "low": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "mid": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "upper": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "high":
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
     default:
       e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type="all";
+      e.type=name;
       break;
     }
 

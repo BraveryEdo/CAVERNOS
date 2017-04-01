@@ -1054,7 +1054,8 @@ public class EqRing extends Effect {
     } else if (specDispMode == "mirrored") {
       MirroredBars(_x, _y, i_rad, s);
     } else {
-      bars(_x, _y, i_rad, s);
+      tunnel(_x, _y, i_rad, s);
+      //bars(_x, _y, i_rad, s);
     }
 
     o_rad = last_rad + (o_rad-last_rad)/10;
@@ -1213,8 +1214,19 @@ public class EqRing extends Effect {
       PShape s = createShape();
       s.beginShape();
       s.curveVertex(0, 0);
-      
-      float wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(4))+1), 1);
+      float decider = random(100);
+      float wScale = 1;
+      if (decider < 33) {
+        //progresses through freqs based on time
+        wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(4))+1), 1);
+      } else if (decider < 90) {
+        //use loudest third
+        wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4))+1), 1);
+      } else {
+        //use mid third
+        wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(4))+1), 1);
+      }
+
       for (float i = 0; i < width; i+= wScale) {
         float adder = 0;
         for (int j = 0; j < wDepth; j++) {
@@ -1229,29 +1241,29 @@ public class EqRing extends Effect {
       popMatrix();
     } else if (waveForm == waveTypes[0]) {
       //multi
-      float maxi = spec[1][sorted[1][0]];
-      for (int i = 0; i < wDepth; i++) {
-        float intensity = spec[1][sorted[1][i]];
-        float r = intensity/maxi;
-        float iHz = hzMult * (sorted[1][i] * size + offset);
-        int q = calcColor(sorted[1][i]);
-        int c = color(red(q), green(q), blue(q), lerp(0, 255, r));
-        stroke(q);
-        strokeWeight(r/64);
-        noFill();
-        pushMatrix();
-        translate(x, y);
-        rotateX(rx);
-        rotateY(ry);
-        rotateZ(rz);
-        PShape s = createShape();
-        //for(int j = 0; j  < w; i+= w){
-        //  s.curveVertex(i*width/w - width/2, sin(i*iHz)*r*h);
-        //}
-        s.endShape();
-        shape(s, 0, 0);
-        popMatrix();
-      }
+      //float maxi = spec[1][sorted[1][0]];
+      //for (int i = 0; i < wDepth; i++) {
+      //  float intensity = spec[1][sorted[1][i]];
+      //  float r = intensity/maxi;
+      //  float iHz = hzMult * (sorted[1][i] * size + offset);
+      //  color q = calcColor(sorted[1][i]);
+      //  color c = color(red(q), green(q), blue(q), lerp(0, 255, r));
+      //  stroke(q);
+      //  strokeWeight(r/64);
+      //  noFill();
+      //  pushMatrix();
+      //  translate(x, y);
+      //  rotateX(rx);
+      //  rotateY(ry);
+      //  rotateZ(rz);
+      //  PShape s = createShape();
+      //  //for(int j = 0; j  < w; i+= w){
+      //  //  s.curveVertex(i*width/w - width/2, sin(i*iHz)*r*h);
+      //  //}
+      //  s.endShape();
+      //  shape(s, 0, 0);
+      //  popMatrix();
+      //}
     }
   }
 
@@ -1309,27 +1321,49 @@ public class EqRing extends Effect {
     float angle = TWO_PI / (pl*reps);
     float a = 0;
     float s = (low*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+    sphereDetail(8);
     for (int i = 0; i < reps; i ++) {
-
       for (int pcount = lowIndex; pcount < highIndex; pcount++) {
         pushMatrix();
+        float r = 0;
         if (i%2 == 0) {
-          rotateZ(a+angle*pcount);
+          r = (a+angle*pcount);
         } else {
-          rotateZ(a+angle*(pl-pcount-1));
+          r = (a+angle*(pl-pcount-1));
         }
 
-        for (int j = 0; j < spec[1][pcount]; j++) {
-          float alph = alpha(bandColor);
-          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-          if (alph-j <= 0) { 
-            break;
+        for (float j = max(spec[1][pcount]*sin(millis()*.002f), 0); j < spec[1][pcount]; ) {
+          float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
+          if (alph >= 0) {
+
+
+            float h = (s+low + (.5f+j)*bar_height);
+            float sx = h*sin(r); 
+            float sy = h*cos(r);
+            float sz = angle*h;
+
+            if (millis()%10000 > 5000) {
+              int dupes = 2+ceil(millis()*.0002f%5);
+              for (int dupe = 0; dupe < dupes; dupe++) { 
+                int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
+                fill(qs);
+                noStroke();
+                pushMatrix();
+                rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
+                rotateX(millis()*.002f + dupe*TWO_PI/dupes);
+                translate(sx, sy, 0);
+                sphere(sz);
+                popMatrix();
+              }
+            }
+            int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
+            fill(q);
+            stroke(q);
+            ellipse(sx, sy, sz, sz);
           }
-          int t = lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f));
-          fill(t);
-          stroke(t);
-          rect(0, s+low + j*bar_height, s, s*2/3);
+          j+= bar_height*.66f;
         }
+
         popMatrix();
       }
 
@@ -1532,29 +1566,29 @@ public class EffectManager {
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type=name;
       break;
-    case "sub": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "low": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "mid": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "upper": 
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
-    case "high":
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
-      break;
+    //case "sub": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "low": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "mid": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "upper": 
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
+    //case "high":
+    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+    //  e.type=name;
+    //  break;
     default:
       e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type="all";
+      e.type=name;
       break;
     }
 
