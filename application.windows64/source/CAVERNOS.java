@@ -25,8 +25,6 @@ public class CAVERNOS extends PApplet {
 
 
 
-
-
 int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
@@ -555,6 +553,56 @@ public class Band {
   }
   );
 }
+class BarsEffect extends Effect {
+  int nbars;
+  BarsEffect(int size, int offset, float hzMult, String type, int h) {
+    super("BarsEffect visualizer", type, size, offset, hzMult, h);
+    nbars = size;
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float angle = TWO_PI / nbars;
+    float a = 0;
+    int bar_height = 5;
+    float ts = sin(millis()*.0002f);
+    float i_rad = 187-5*ts;
+    float rot = ts;
+
+    float s = (i_rad*PI/nbars)*.8f;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(x, y);
+    rotate(rot);
+    for (int i = 0; i < nbars; i ++) {
+      pushMatrix();
+      rotateZ(a);
+      float r = random(255);
+      float b = random(255);
+      float g = random(255);
+      float z = random(5); 
+      for (int j = 0; j < spec[1][i]; j++) {
+        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
+          break;
+        }
+        //stroke(r-j, b-j, g-j, 120+z*j);
+        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
+        rect(0, s+i_rad + j*bar_height, s, s*2/3);
+      }
+      popMatrix();
+      a+= angle;
+    }
+    popMatrix();
+  }
+}
 public class ColorPicker {
   //using A4 tuning of 432 hz using an equal tempered scale: http://www.phy.mtu.edu/~suits/notefreq432.html
   // frequency n = baseFreqeuency (A4 of 432hz) * a^n where a = 2^(1/12) and n equals the number of half steps from the fixed base note
@@ -685,93 +733,6 @@ public class ColorPicker {
   //  return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   //}
 }
-abstract class Effect {
-  String name;
-  String type;
-  int picked;
-  int size;
-  int offset;
-  float hzMult;
-  int maxIndex;
-  int histDepth;
-  float[][] spec;
-  float[][][] specHist;
-  int[][] sorted;
-  int [][][] sortedHist;
-  int colorIndex;
-  boolean gradient;
-
-  Effect(String n, String t, int s, int o, float h, int hist) {
-    setName(n);
-    setType(t);
-    setColor(color(0, 0, 0));
-    setSize(s);
-    setOffset(o);
-    setHzMult(h);
-    setMaxIndex(0);
-    histDepth = hist;
-    spec = new float[channels][size];
-    specHist = new float[histDepth][channels][size];
-    sorted = new int[channels][size];
-    sortedHist = new int[histDepth][channels][size];
-    colorIndex = cp.getIndex(t);
-    gradient = false;
-    println("effect '" + n + "' for range type '" + t + "' loaded");
-  }
-
-  //display in given bounding box
-  abstract public void display(float left, float top, float right, float bottom);
-  //display centered on x,y with given height/width and rotations (0 is default up/down)
-  public abstract void display(float x, float y, float h, float w, float rx, float ry, float rz);
-
-  public void setName(String n) { 
-    this.name = n;
-  }
-  public void setType(String t) { 
-    this.type = t;
-  }
-  public void setColor(int c) { 
-    this.picked = c;
-  }
-  public int calcColor(int chosenIndex) {
-    return cp.pick(hzMult * (chosenIndex * size + offset));
-  }
-  public int pickColor() {
-    this.picked = cp.pick(hzMult * (maxIndex * size + offset)); 
-    cp.setColor(type, this.picked);
-    return picked;
-  }
-
-  public int[][] getSorted() {
-    return sorted;
-  }
-  public void setSize(int s) { 
-    this.size = s;
-  }
-  public void setOffset(int o) { 
-    this.offset = o;
-  }
-  public void setHzMult(float h) { 
-    this.hzMult = h;
-  }
-  public void setMaxIndex(int i) { 
-    this.maxIndex = i;
-  }
-  public void streamSpec(float[][] s, int[][] sort) { 
-    this.spec = s;
-    sorted = sort;
-    for (int i = 0; i < histDepth-1; i++) {
-      specHist[i+1] = specHist[i];
-      sortedHist[i+1] = sortedHist[i];
-    }
-    specHist[0] = s;
-    sortedHist[0] = sort;
-  }
-  public void toggleGradient() { 
-    gradient = !gradient;
-  }
-}
-
 public class DefaultVis extends Effect {
 
   boolean mirrored = false;
@@ -828,685 +789,140 @@ public class DefaultVis extends Effect {
     }
   }
 }
+abstract class Effect {
+  String name;
+  String type;
+  int picked;
+  int size;
+  int offset;
+  float hzMult;
+  int maxIndex;
+  int histDepth;
+  float[][] spec;
+  float[][][] specHist;
+  int[][] sorted;
+  int [][][] sortedHist;
+  int colorIndex;
+  boolean gradient;
+  Effect[] subEffects;
 
-
-public class MirroredVerticalVis extends Effect {
-
-  MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
-    super("MirroredDefault", type, size, offset, hzMult, h);
+  Effect(String n, String t, int s, int o, float h, int hist) {
+    setName(n);
+    setType(t);
+    setColor(color(0, 0, 0));
+    setSize(s);
+    setOffset(o);
+    setHzMult(h);
+    setMaxIndex(0);
+    histDepth = hist;
+    spec = new float[channels][size];
+    specHist = new float[histDepth][channels][size];
+    sorted = new int[channels][size];
+    sortedHist = new int[histDepth][channels][size];
+    colorIndex = cp.getIndex(t);
+    gradient = false;
+    println("effect '" + n + "' for range type '" + t + "' loaded");
   }
 
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
+  //display in given bounding box
+  abstract public void display(float left, float top, float right, float bottom);
+  //display centered on x,y with given height/width and rotations (0 is default up/down)
+  public abstract void display(float x, float y, float h, float w, float rx, float ry, float rz);
 
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  public void setName(String n) { 
+    this.name = n;
+    //does not propogate
   }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/size;   
-    float mix = .15f;
-
+  public void setType(String t) { 
+    this.type = t;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setType(t);
+      }
+    }
+  }
+  public void setColor(int c) { 
+    this.picked = c;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setColor(c);
+      }
+    }
+  }
+  public int calcColor(int chosenIndex) {
+    return cp.pick(hzMult * (chosenIndex * size + offset));
+  }
+  public int pickColor() {
+    this.picked = cp.pick(hzMult * (maxIndex * size + offset)); 
     cp.setColor(type, this.picked);
-    strokeWeight(1);
-    int [][] hist = cp.getColorHistory();
-    int[] c = hist[0];
-    int current, prev, next, bckgrnd;
-    current = c[colorIndex];
-    bckgrnd = c[0];
-    if (colorIndex == 0) {
-      for (int i = 1; i < hist.length; i++) {
-        current = lerpColor(current, hist[i][colorIndex], .25f);
-      }
-      prev = hist[1][colorIndex];
-      next =  hist[0][colorIndex];
-    } else if (colorIndex == 1) {
-      prev = lerpColor(current, bckgrnd, mix);
-      next = c[colorIndex+1];
-    } else if (colorIndex < c.length-2) {
-      prev = c[colorIndex-1];
-      next = c[colorIndex+1];
-    } else { 
-      prev = c[colorIndex-1];
-      next = lerpColor(current, bckgrnd, mix);
-    }
-
-    for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) { 
-
-        if (i < size /4) {
-          stroke(lerpColor(current, prev, 0.5f*i/size));
-        } else if (i > .75f*size) {
-          stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
-        } else {
-          stroke(current);
-        }
-      } else {
-        stroke(picked);
-      }
-
-      noFill();
-      pushMatrix();
-      translate(x, y, 0);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      line((i + .5f)*x_scale - w/2.0f, h/2.0f + spec[1][i], 
-        (i + .5f)*x_scale - w/2.0f, h/2.0f - spec[1][i]);
-      popMatrix();
-    }
-  }
-}
-
-public class ExpandingVis extends Effect {
-
-  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
-    super("ExpandingVis", type, size, offset, hzMult, h);
+    return picked;
   }
 
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  public int[][] getSorted() {
+    return sorted;
   }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/size;   
-    float mix = .15f;
-    float ER = .15f+.07f*sin(millis()); //expansion reduction
-
-    cp.setColor(type, this.picked);
-    strokeWeight(1);
-    int [][] hist = cp.getColorHistory();
-    int current, prev, next, bckgrnd;
-    bckgrnd = hist[0][0];
-
-    float[] splitDist = new float[size];
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        splitDist[j] = specHist[0][1][j];
-      }
-      for (int j = 1; j < histDepth; j++) {
-        splitDist[i] += specHist[j][1][i]*ER;
-      }
-    }
-    for (int i = 0; i < histDepth; i++) {
-      splitDist[size-1] = lerp(splitDist[size-1], splitDist[size-2], .5f);
-    }
-
-
-    for (int hd = histDepth-1; hd >= 0; hd--) {
-      current = hist[hd][colorIndex];
-      if (colorIndex == 0) {
-        for (int i = 1; i < hist.length; i++) {
-          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
-        }
-        prev = hist[1][colorIndex];
-        next =  hist[0][colorIndex];
-      } else if (colorIndex == 1) {
-        prev = lerpColor(current, bckgrnd, mix);
-        next = hist[hd][colorIndex+1];
-      } else if (colorIndex < hist[hd].length-2) {
-        prev = hist[hd][colorIndex-1];
-        next = hist[hd][colorIndex+1];
-      } else { 
-        prev = hist[hd][colorIndex-1];
-        next = lerpColor(current, bckgrnd, mix);
-      }
-      current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
-      for (int i = 0; i < size; i++) {
-        if (gradient && colorIndex !=0) {
-          if (i < size /4) {
-            stroke(lerpColor(current, prev, 0.5f*i/size));
-          } else if (i > .75f*size) {
-            stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
-          } else {
-            stroke(current);
-          }
-        } else {
-          stroke(current);
-        }
-
-        noFill();
-        pushMatrix();
-        translate(x, y, 0);
-        rotateX(rx);
-        rotateY(ry);
-        rotateZ(rz);
-        if ( hd == 0) {
-          line((i + .5f)*x_scale - w/2.0f, h/2.0f + specHist[hd][1][i], 
-            (i + .5f)*x_scale - w/2.0f, h/2.0f - specHist[hd][1][i]);
-        } else {
-          line((i + .5f)*x_scale - w/2.0f, h/2.0f + splitDist[i] +specHist[hd][1][i], 
-            (i + .5f)*x_scale - w/2.0f, h/2.0f - splitDist[i] - specHist[hd][1][i]);
-        }
-
-        splitDist[i] -= specHist[hd][1][i]*ER;
-        popMatrix();
+  public void setSize(int s) { 
+    this.size = s;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setOffset(s);
       }
     }
   }
-}
-
-public class SubVis extends Effect {
-  SubVis(int size, int offset, float hzMult, String type, int h) {
-    super("sub-range visualizer", type, size, offset, hzMult, h);
-  }
-
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-    stroke(picked);
-    strokeWeight(1);
-    cp.setColor(type, this.picked);
-    float sectionSize = (w/PApplet.parseFloat(size));
-    for (int i = 0; i < size; i++) {
-      line( (i*sectionSize + .5f), bottom, (i*sectionSize + .5f), bottom - min(spec[1][i], h));
+  public void setOffset(int o) { 
+    this.offset = o;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setOffset(o);
+      }
     }
   }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-  }
-}
-
-
-public class EqRing extends Effect {
-  EqRing(int size, int offset, float hzMult, String type, int h) {
-    super("EqRing visualizer", type, size, offset, hzMult, h);
-  }
-  //last known radius, used for smoothing
-  float last_rad = 1000;
-  //number of triangles in the outer ring
-  int num_tri_oring = 50;
-  float pad = 25;
-  int nbars = size;
-  int lastPicked = picked;
-  float waveH = 100;
-
-  public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-
-    if (waveForm != "disabled") {
-      noCursor();
-      waveForm(0, mouseY, waveH, 0, 0, 0);
-    } else {
-      cursor();
-    }
-
-
-    cp.setColor(type, this.picked);
-    strokeWeight(1);
-    int[] c = cp.getColors();
-    int current = c[colorIndex];
-    float t = millis();
-    float gmax = spec[1][maxIndex];
-    float s = sin((t)*.0002f);
-
-    float o_rot = -.75f*s;
-    float i_rad = 187-5*s;
-    float o_rad = (i_rad+gmax*5);
-
-    stroke(current);
-
-    ring(_x, _y, nbars, i_rad, o_rot, false);
-    if (spotlightBars) {
-      spotlightBars(_x, _y, i_rad, s);
-    } else if (specDispMode == "mirrored") {
-      MirroredBars(_x, _y, i_rad, s);
-    } else {
-      tunnel(_x, _y, i_rad, s);
-      //bars(_x, _y, i_rad, s);
-    }
-
-    o_rad = last_rad + (o_rad-last_rad)/10;
-    if (o_rad < last_rad) {
-      o_rad+= 1;
-    } 
-
-
-    int lerp1 = lerpColor(current, lastPicked, 0.33f);
-
-    noFill();
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(s));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
-
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(-(s)));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
-
-    int lerp2 = lerpColor(current, lastPicked, 0.66f);
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(s));
-    stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(-(s)));
-    //stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
-
-    last_rad = o_rad;
-    lastPicked = lerpColor(current, lastPicked, .8f);
-  }
-
-  public void display(float left, float top, float right, float bottom) {
-
-    float _x = left+(right - left)/2.0f;
-    float _y = top-(top - bottom)/2.0f;
-
-    this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
-  }
-
-
-
-  public void bars(float _x, float _y, float low, float rot) {
-
-    float angle = TWO_PI / nbars;
-    float a = 0;
-    int bar_height = 5;
-
-    float s = (low*PI/nbars)*.8f;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(_x, _y);
-    rotate(rot);
-    for (int i = 0; i < nbars; i ++) {
-      pushMatrix();
-      rotateZ(a);
-      float r = random(255);
-      float b = random(255);
-      float g = random(255);
-      float z = random(5); 
-      for (int j = 0; j < spec[1][i]; j++) {
-        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) {
-          break;
-        }
-        //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+low + j*bar_height, s, s*2/3);
+  public void setHzMult(float h) { 
+    this.hzMult = h;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setHzMult(h);
       }
-      popMatrix();
-      a+= angle;
-    }
-    popMatrix();
-  }
-
-  public void MirroredBars(float _x, float _y, float low, float rot) {
-
-    float angle = TWO_PI / (nbars*2);
-    float a = 0;
-    int bar_height = 5;
-
-    float s = (low*PI/ nbars)*.8f;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(_x, _y);
-    rotate(rot);
-    for (int i = 0; i < nbars; i ++) {
-      float r = 128;
-      float b = 128;
-      float g = 128;
-      float z = random(5); 
-      pushMatrix();
-      rotateZ(PI+a);
-      for (int j = 0; j < spec[1][(nbars-1)-i]; j++) {
-        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
-          break;
-        }
-        //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor((nbars-1)-i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+low + j*bar_height, s, s*2/3);
-      }
-      popMatrix();
-
-      pushMatrix();
-      rotateY(PI);
-      rotateZ(PI+a+angle);
-      for (int j = 0; j < spec[1][i]; j++) {
-        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
-          break;
-        }
-        //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+low + j*bar_height, s, s*2/3);
-      }
-      popMatrix();
-
-      a+= angle;
-    }
-    popMatrix();
-  }
-
-  public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
-    int wDepth = sorted[1].length/10;
-    if (waveForm == waveTypes[0]) {
-      //additive
-      int[] c = cp.getColors();
-      int current = c[colorIndex];
-      stroke(current);
-      strokeWeight(1);
-      noFill();
-      pushMatrix();
-      translate(x, y);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      float max = spec[1][sorted[1][0]];
-      float hScale = h/max(max, 1);
-      PShape s = createShape();
-      s.beginShape();
-      s.curveVertex(0, 0);
-      float decider = random(100);
-      float wScale = 1;
-      if (decider < 33) {
-        //progresses through freqs based on time
-        wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(4))+1), 1);
-      } else if (decider < 90) {
-        //use loudest third
-        wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4))+1), 1);
-      } else {
-        //use mid third
-        wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(4))+1), 1);
-      }
-
-      for (float i = 0; i < width; i+= wScale) {
-        float adder = 0;
-        for (int j = 0; j < wDepth; j++) {
-          float jHz = hzMult * (sorted[1][j] * size + offset);
-          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
-        }
-        s.curveVertex(i*wScale, adder/(sorted[1].length/4));
-      }
-      s.curveVertex(width, 0);
-      s.endShape();
-      shape(s, 0, 0);
-      popMatrix();
-    } else if (waveForm == waveTypes[0]) {
-      //multi
-      //float maxi = spec[1][sorted[1][0]];
-      //for (int i = 0; i < wDepth; i++) {
-      //  float intensity = spec[1][sorted[1][i]];
-      //  float r = intensity/maxi;
-      //  float iHz = hzMult * (sorted[1][i] * size + offset);
-      //  color q = calcColor(sorted[1][i]);
-      //  color c = color(red(q), green(q), blue(q), lerp(0, 255, r));
-      //  stroke(q);
-      //  strokeWeight(r/64);
-      //  noFill();
-      //  pushMatrix();
-      //  translate(x, y);
-      //  rotateX(rx);
-      //  rotateY(ry);
-      //  rotateZ(rz);
-      //  PShape s = createShape();
-      //  //for(int j = 0; j  < w; i+= w){
-      //  //  s.curveVertex(i*width/w - width/2, sin(i*iHz)*r*h);
-      //  //}
-      //  s.endShape();
-      //  shape(s, 0, 0);
-      //  popMatrix();
-      //}
     }
   }
-
-  public void tunnel(float _x, float _y, float low, float rot) {
-    int bar_height = 5;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(_x, _y);
-    rotate(rot);
-    float diff = 3;
-    int lowIndex = maxIndex, highIndex = maxIndex;
-    for (int i = lowIndex; i > 0; i--) {
-      if (spec[1][i-1] < spec[1][lowIndex]) {
-        lowIndex = max(i - 1, 0);
-      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
-        //lowIndex = i - 1;
-      } else {
-        break;
-      }
-
-      if (spec[1][i-1] < diff) {
-        break;
+  public void setMaxIndex(int i) {
+    this.maxIndex = i;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.setMaxIndex(i);
       }
     }
-    for (int i = highIndex; i < spec[1].length-2; i++) {
-      if (spec[1][i+1] < spec[1][highIndex]) {
-        highIndex = min(i + 1, spec[1].length-1);
-      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
-        //highIndex = i + 1;
-      } else { 
-        break;
-      }
-
-      if (spec[1][i+1] < diff) {
-        break;
-      }
-    }
-
-    if (highIndex == lowIndex) {
-      if (highIndex + 1  < spec[1].length) {
-        highIndex ++;
-      } else {
-        lowIndex --;
-      }
-    }
-
-    int pl = highIndex-lowIndex;
-    int reps = floor(nbars/pl);
-    if (reps %2 != 0) { 
-      reps++;
-    }
-
-    int bandColor = cp.getColors()[colorIndex];
-    float angle = TWO_PI / (pl*reps);
-    float a = 0;
-    float s = (low*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
-    sphereDetail(8);
-    for (int i = 0; i < reps; i ++) {
-      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
-        pushMatrix();
-        float r = 0;
-        if (i%2 == 0) {
-          r = (a+angle*pcount);
-        } else {
-          r = (a+angle*(pl-pcount-1));
-        }
-
-        for (float j = max(spec[1][pcount]*sin(millis()*.002f), 0); j < spec[1][pcount]; ) {
-          float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
-          if (alph >= 0) {
-
-
-            float h = (s+low + (.5f+j)*bar_height);
-            float sx = h*sin(r); 
-            float sy = h*cos(r);
-            float sz = angle*h;
-
-            if (millis()%10000 > 5000) {
-              int dupes = 2+ceil(millis()*.0002f%5);
-              for (int dupe = 0; dupe < dupes; dupe++) { 
-                int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
-                fill(qs);
-                noStroke();
-                pushMatrix();
-                rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
-                rotateX(millis()*.002f + dupe*TWO_PI/dupes);
-                translate(sx, sy, 0);
-                sphere(sz);
-                popMatrix();
-              }
-            }
-            int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
-            fill(q);
-            stroke(q);
-            ellipse(sx, sy, sz, sz);
-          }
-          j+= bar_height*.66f;
-        }
-
-        popMatrix();
-      }
-
-      a+= TWO_PI/PApplet.parseFloat(reps);
-    }
-    popMatrix();
   }
-
-  public void spotlightBars(float _x, float _y, float low, float rot) {
-    int bar_height = 5;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(_x, _y);
-    rotate(rot);
-    float diff = 3;
-    int lowIndex = maxIndex, highIndex = maxIndex;
-    for (int i = lowIndex; i > 0; i--) {
-      if (spec[1][i-1] < spec[1][lowIndex]) {
-        lowIndex = max(i - 1, 0);
-      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
-        //lowIndex = i - 1;
-      } else {
-        break;
-      }
-
-      if (spec[1][i-1] < diff) {
-        break;
+  public void streamSpec(float[][] s, int[][] sort) { 
+    this.spec = s;
+    sorted = sort;
+    for (int i = 0; i < histDepth-1; i++) {
+      specHist[i+1] = specHist[i];
+      sortedHist[i+1] = sortedHist[i];
+    }
+    specHist[0] = s;
+    sortedHist[0] = sort;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.streamSpec(s, sort);
       }
     }
-    for (int i = highIndex; i < spec[1].length-2; i++) {
-      if (spec[1][i+1] < spec[1][highIndex]) {
-        highIndex = min(i + 1, spec[1].length-1);
-      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
-        //highIndex = i + 1;
-      } else { 
-        break;
-      }
-
-      if (spec[1][i+1] < diff) {
-        break;
-      }
-    }
-
-    if (highIndex == lowIndex) {
-      if (highIndex + 1  < spec[1].length) {
-        highIndex ++;
-      } else {
-        lowIndex --;
-      }
-    }
-
-    int pl = highIndex-lowIndex;
-    int reps = floor(nbars/pl);
-    if (reps %2 != 0) { 
-      reps++;
-    }
-
-    int bandColor = cp.getColors()[colorIndex];
-    float angle = TWO_PI / (pl*reps);
-    float a = 0;
-    float s = (low*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
-    for (int i = 0; i < reps; i ++) {
-
-      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
-        pushMatrix();
-        if (i%2 == 0) {
-          rotateZ(a+angle*pcount);
-        } else {
-          rotateZ(a+angle*(pl-pcount-1));
-        }
-
-        for (int j = 0; j < spec[1][pcount]; j++) {
-          float alph = alpha(bandColor);
-          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-          if (alph-j <= 0) { 
-            break;
-          }
-          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f)));
-          rect(0, s+low + j*bar_height, s, s*2/3);
-        }
-        popMatrix();
-      }
-
-      a+= TWO_PI/PApplet.parseFloat(reps);
-    }
-    popMatrix();
   }
-
-  //creates a ring of outward facing triangles
-  public void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
-    // _x, _y = center point
-    // _n = number of triangles in ring
-    // _r = radius of ring (measured to tri center point)
-    // ori = orientation true = out, false = in
-    float rads = 0;
-    float s = (_r*PI/_n)*.9f;
-    float diff = TWO_PI/_n; 
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateZ(rot);
-    for (int i = 0; i < _n; i++) {
-      float tx = sin(rads)*_r;
-      float ty = cos(rads)*_r;
-      tri(tx, ty, 0, rads, s, ori);
-      rads += diff;
+  public void toggleGradient() { 
+    gradient = !gradient;
+    //propogate to subEffects
+    if (subEffects != null) {
+      for (Effect se : subEffects) {
+        se.toggleGradient();
+      }
     }
-    popMatrix();
-  }
-
-  //creates an triangle with its center at _x, _y, _z.
-  //rotated by _r
-  // _s = triangle size (edge length in pixels)
-  // ori = determines if it starts pointed up or down
-  public void tri(float _x, float _y, float _z, float _r, float _s, boolean ori) {
-
-    pushMatrix();
-    translate(_x, _y, _z);
-
-    if (ori) {
-      rotateZ(PI/2.0f-_r);
-    } else {
-      rotateZ(PI+PI/2.0f-_r);
-    }
-
-    polygon(0, 0, _s, 3);
-    popMatrix();
-  }
-
-  // for creating regular polygons
-  public void polygon(float x, float y, float radius, int npoints) {
-    float angle = TWO_PI / npoints;
-    beginShape();
-    for (float a = 0; a < TWO_PI; a += angle) {
-      //if(gmax > 180){
-      //  stroke(random(120,220), random(255), random(30, 210), random(100, 200));
-      //}
-      float sx = x + cos(a) * radius;
-      float sy = y + sin(a) * radius;
-      vertex(sx, sy, 0);
-    }
-    endShape(CLOSE);
   }
 }
 public class EffectManager {
@@ -1663,6 +1079,311 @@ public class EffectManager {
   }
 }
 
+public class EqRing extends Effect {
+  EqRing(int size, int offset, float hzMult, String type, int h) {
+    super("EqRing visualizer", type, size, offset, hzMult, h);
+    subEffects = new Effect[4];
+    subEffects[0] = new BarsEffect(size, offset, hzMult, type, h);
+    subEffects[1] = new MirroredBarsEffect(size, offset, hzMult, type, h);
+    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
+    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
+  }
+  //last known radius, used for smoothing
+  float last_rad = 1000;
+  //number of triangles in the outer ring
+  int num_tri_oring = 50;
+  float pad = 25;
+  int nbars = size;
+  int lastPicked = picked;
+  float waveH = 100;
+
+  public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
+
+    if (waveForm != "disabled") {
+      noCursor();
+      waveForm(0, mouseY, waveH, 0, 0, 0);
+    } else {
+      cursor();
+    }
+
+
+    cp.setColor(type, this.picked);
+    strokeWeight(1);
+    int[] c = cp.getColors();
+    int current = c[colorIndex];
+    float t = millis();
+    float gmax = spec[1][maxIndex];
+    float s = sin((t)*.0002f);
+
+    float o_rot = -.75f*s;
+    float i_rad = 187-5*s;
+    float o_rad = (i_rad+gmax*5);
+
+    stroke(current);
+
+    ring(_x, _y, nbars, i_rad, o_rot, false);
+    if (spotlightBars) {
+      //spotlightBars(_x, _y, i_rad, s);
+      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
+    } else if (specDispMode == "mirrored") {
+      subEffects[1].display(_x, _y, h, w, 0, 0, 0);
+      //MirroredBars(_x, _y, i_rad, s);
+    } else {
+      //spBars(_x, _y, i_rad, s);
+      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
+      //bars(_x, _y, i_rad, s);
+    }
+
+    o_rad = last_rad + (o_rad-last_rad)/10;
+    if (o_rad < last_rad) {
+      o_rad+= 1;
+    } 
+
+
+    int lerp1 = lerpColor(current, lastPicked, 0.33f);
+
+    noFill();
+    pushMatrix();
+    translate(_x, _y, 0);
+    rotateX(sin(s));
+    stroke(lerp1);
+    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+    popMatrix();
+
+
+    pushMatrix();
+    translate(_x, _y, 0);
+    rotateX(sin(-(s)));
+    stroke(lerp1);
+    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+    popMatrix();
+
+    int lerp2 = lerpColor(current, lastPicked, 0.66f);
+
+    pushMatrix();
+    translate(_x, _y, 0);
+    rotateY(sin(s));
+    stroke(lerp2);
+    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+    popMatrix();
+
+    pushMatrix();
+    translate(_x, _y, 0);
+    rotateY(sin(-(s)));
+    //stroke(lerp2);
+    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+    popMatrix();
+
+    last_rad = o_rad;
+    lastPicked = lerpColor(current, lastPicked, .8f);
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+
+    float _x = left+(right - left)/2.0f;
+    float _y = top-(top - bottom)/2.0f;
+
+    this.display(_x, _y, abs(top-bottom), right-left, 0, 0, 0);
+  }
+
+  public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
+    int wDepth = sorted[1].length/10;
+    if (waveForm == waveTypes[0]) {
+      //additive
+      int[] c = cp.getColors();
+      int current = c[colorIndex];
+
+      pushMatrix();
+      translate(x, y);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      float max = spec[1][sorted[1][0]];
+      float hScale = h/max(max, 1);
+      PShape s = createShape();
+      s.beginShape();
+      s.stroke(current);
+      s.strokeWeight(1);
+      s.noFill();
+      s.beginShape();
+      s.curveVertex(0, 0);
+      float decider = random(100);
+      float wScale =1;
+      if (decider < 33) {
+        //progresses through freqs based on time
+        wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
+      } else if (decider < 80) {
+        //use loudest third
+        wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002f)))+1), 1);
+      } else {
+        //use mid third
+        wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
+      }
+
+      for (float i = 0; i < width; i+= wScale) {
+        float adder = 0;
+        for (int j = 0; j < wDepth; j++) {
+          float jHz = hzMult * (sorted[1][j] * size + offset);
+          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
+        }
+        s.curveVertex(i/**wScale*/, adder/(sorted[1].length/4));
+      }
+      s.curveVertex(width, 0);
+      s.endShape();
+      shape(s, 0, 0);
+      popMatrix();
+    }
+  }
+
+
+
+  //creates a ring of outward facing triangles
+  public void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
+    // _x, _y = center point
+    // _n = number of triangles in ring
+    // _r = radius of ring (measured to tri center point)
+    // ori = orientation true = out, false = in
+    float rads = 0;
+    float s = (_r*PI/_n)*.9f;
+    float diff = TWO_PI/_n; 
+
+    pushMatrix();
+    translate(_x, _y, 0);
+    rotateZ(rot);
+    for (int i = 0; i < _n; i++) {
+      float tx = sin(rads)*_r;
+      float ty = cos(rads)*_r;
+      tri(tx, ty, 0, rads, s, ori);
+      rads += diff;
+    }
+    popMatrix();
+  }
+
+  //creates an triangle with its center at _x, _y, _z.
+  //rotated by _r
+  // _s = triangle size (edge length in pixels)
+  // ori = determines if it starts pointed up or down
+  public void tri(float _x, float _y, float _z, float _r, float _s, boolean ori) {
+
+    pushMatrix();
+    translate(_x, _y, _z);
+
+    if (ori) {
+      rotateZ(PI/2.0f-_r);
+    } else {
+      rotateZ(PI+PI/2.0f-_r);
+    }
+
+    polygon(0, 0, _s, 3);
+    popMatrix();
+  }
+
+  // for creating regular polygons
+  public void polygon(float x, float y, float radius, int npoints) {
+    float angle = TWO_PI / npoints;
+    beginShape();
+    for (float a = 0; a < TWO_PI; a += angle) {
+      //if(gmax > 180){
+      //  stroke(random(120,220), random(255), random(30, 210), random(100, 200));
+      //}
+      float sx = x + cos(a) * radius;
+      float sy = y + sin(a) * radius;
+      vertex(sx, sy, 0);
+    }
+    endShape(CLOSE);
+  }
+}
+public class ExpandingVis extends Effect {
+
+  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
+    super("ExpandingVis", type, size, offset, hzMult, h);
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+    float mix = .15f;
+    float ER = .15f+.07f*sin(millis()); //expansion reduction
+
+    cp.setColor(type, this.picked);
+    strokeWeight(1);
+    int [][] hist = cp.getColorHistory();
+    int current, prev, next, bckgrnd;
+    bckgrnd = hist[0][0];
+
+    float[] splitDist = new float[size];
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        splitDist[j] = specHist[0][1][j];
+      }
+      for (int j = 1; j < histDepth; j++) {
+        splitDist[i] += specHist[j][1][i]*ER;
+      }
+    }
+    for (int i = 0; i < histDepth; i++) {
+      splitDist[size-1] = lerp(splitDist[size-1], splitDist[size-2], .5f);
+    }
+
+
+    for (int hd = histDepth-1; hd >= 0; hd--) {
+      current = hist[hd][colorIndex];
+      if (colorIndex == 0) {
+        for (int i = 1; i < hist.length; i++) {
+          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
+        }
+        prev = hist[1][colorIndex];
+        next =  hist[0][colorIndex];
+      } else if (colorIndex == 1) {
+        prev = lerpColor(current, bckgrnd, mix);
+        next = hist[hd][colorIndex+1];
+      } else if (colorIndex < hist[hd].length-2) {
+        prev = hist[hd][colorIndex-1];
+        next = hist[hd][colorIndex+1];
+      } else { 
+        prev = hist[hd][colorIndex-1];
+        next = lerpColor(current, bckgrnd, mix);
+      }
+      current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
+      for (int i = 0; i < size; i++) {
+        if (gradient && colorIndex !=0) {
+          if (i < size /4) {
+            stroke(lerpColor(current, prev, 0.5f*i/size));
+          } else if (i > .75f*size) {
+            stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
+          } else {
+            stroke(current);
+          }
+        } else {
+          stroke(current);
+        }
+
+        noFill();
+        pushMatrix();
+        translate(x, y, 0);
+        rotateX(rx);
+        rotateY(ry);
+        rotateZ(rz);
+        if ( hd == 0) {
+          line((i + .5f)*x_scale - w/2.0f, h/2.0f + specHist[hd][1][i], 
+            (i + .5f)*x_scale - w/2.0f, h/2.0f - specHist[hd][1][i]);
+        } else {
+          line((i + .5f)*x_scale - w/2.0f, h/2.0f + splitDist[i] +specHist[hd][1][i], 
+            (i + .5f)*x_scale - w/2.0f, h/2.0f - splitDist[i] - specHist[hd][1][i]);
+        }
+
+        splitDist[i] -= specHist[hd][1][i]*ER;
+        popMatrix();
+      }
+    }
+  }
+}
+
 String gradientMode = "none";
 public void mouseClicked() {
   if (mouseButton == RIGHT) {
@@ -1760,6 +1481,357 @@ public void keyPressed() {
     }
   } else {
     println("unhandled key: " + key);
+  }
+}
+class MirroredBarsEffect extends Effect {
+  int nbars;
+  MirroredBarsEffect(int size, int offset, float hzMult, String type, int h) {
+    super("MirroredBarsEffect visualizer", type, size, offset, hzMult, h);
+    nbars = size;
+  }
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+
+    float angle = TWO_PI / (nbars*2);
+    float a = 0;
+    int bar_height = 5;
+    float ts = sin(millis()*.0002f);
+    float i_rad = 187-5*ts;
+    float rot = ts;
+
+    float s = (i_rad*PI/ nbars)*.8f;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(x, y);
+    rotate(rot);
+    for (int i = 0; i < nbars; i ++) {
+      float r = 128;
+      float b = 128;
+      float g = 128;
+      float z = random(5); 
+      pushMatrix();
+      rotateZ(PI+a);
+      for (int j = 0; j < spec[1][(nbars-1)-i]; j++) {
+        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
+          break;
+        }
+        //stroke(r-j, b-j, g-j, 120+z*j);
+        stroke(lerpColor(calcColor((nbars-1)-i), color(r-j, b-j, g-j, 120+z*j), .7f));
+        rect(0, s+i_rad + j*bar_height, s, s*2/3);
+      }
+      popMatrix();
+
+      pushMatrix();
+      rotateY(PI);
+      rotateZ(PI+a+angle);
+      for (int j = 0; j < spec[1][i]; j++) {
+        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
+          break;
+        }
+        //stroke(r-j, b-j, g-j, 120+z*j);
+        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
+        rect(0, s+i_rad + j*bar_height, s, s*2/3);
+      }
+      popMatrix();
+
+      a+= angle;
+    }
+    popMatrix();
+  }
+}
+public class MirroredVerticalVis extends Effect {
+
+  MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
+    super("MirroredDefault", type, size, offset, hzMult, h);
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    float x_scale = w/size;   
+    float mix = .15f;
+
+    cp.setColor(type, this.picked);
+    strokeWeight(1);
+    int [][] hist = cp.getColorHistory();
+    int[] c = hist[0];
+    int current, prev, next, bckgrnd;
+    current = c[colorIndex];
+    bckgrnd = c[0];
+    if (colorIndex == 0) {
+      for (int i = 1; i < hist.length; i++) {
+        current = lerpColor(current, hist[i][colorIndex], .25f);
+      }
+      prev = hist[1][colorIndex];
+      next =  hist[0][colorIndex];
+    } else if (colorIndex == 1) {
+      prev = lerpColor(current, bckgrnd, mix);
+      next = c[colorIndex+1];
+    } else if (colorIndex < c.length-2) {
+      prev = c[colorIndex-1];
+      next = c[colorIndex+1];
+    } else { 
+      prev = c[colorIndex-1];
+      next = lerpColor(current, bckgrnd, mix);
+    }
+
+    for (int i = 0; i < size; i++) {
+      if (gradient && colorIndex !=0) { 
+
+        if (i < size /4) {
+          stroke(lerpColor(current, prev, 0.5f*i/size));
+        } else if (i > .75f*size) {
+          stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
+        } else {
+          stroke(current);
+        }
+      } else {
+        stroke(picked);
+      }
+
+      noFill();
+      pushMatrix();
+      translate(x, y, 0);
+      rotateX(rx);
+      rotateY(ry);
+      rotateZ(rz);
+      line((i + .5f)*x_scale - w/2.0f, h/2.0f + spec[1][i], 
+        (i + .5f)*x_scale - w/2.0f, h/2.0f - spec[1][i]);
+      popMatrix();
+    }
+  }
+}
+class SphereBars extends Effect {
+  int nbars;
+  SphereBars(int size, int offset, float hzMult, String type, int h) {
+    super("SphereBars visualizer", type, size, offset, hzMult, h);
+    nbars = size;
+  }
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h1, float w, float rx, float ry, float rz) {
+    int bar_height = 5;
+    float ts = sin(millis()*.0002f);
+    float i_rad = 187-5*ts;
+    float rot = ts;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(x, y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    int bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+    sphereDetail(8);
+    for (int i = 0; i < reps; i ++) {
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        float r = 0;
+        if (i%2 == 0) {
+          r = (a+angle*pcount);
+        } else {
+          r = (a+angle*(pl-pcount-1));
+        }
+
+        for (float j = max(spec[1][pcount]*sin(millis()*.002f), 0); j < spec[1][pcount]; ) {
+          float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
+          if (alph >= 0) {
+
+
+            float h = (s+i_rad + (.5f+j)*bar_height);
+            float sx = h*sin(r); 
+            float sy = h*cos(r);
+            float sz = angle*h;
+
+            if (millis()%10000 > 5000) {
+              int dupes = 2+ceil(millis()*.0002f%5);
+              for (int dupe = 0; dupe < dupes; dupe++) { 
+                int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
+                fill(qs);
+                noStroke();
+                pushMatrix();
+                rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
+                rotateX(millis()*.002f + dupe*TWO_PI/dupes);
+                translate(sx, sy, 0);
+                sphere(sz);
+                popMatrix();
+              }
+            }
+            int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
+            fill(q);
+            stroke(q);
+            ellipse(sx, sy, sz, sz);
+          }
+          j+= bar_height*.66f;
+        }
+
+        popMatrix();
+      }
+
+      a+= TWO_PI/PApplet.parseFloat(reps);
+    }
+    popMatrix();
+  }
+}
+class SpotlightBarsEffect extends Effect {
+
+  int nbars;
+  SpotlightBarsEffect(int size, int offset, float hzMult, String type, int h) {
+    super("SpotlightBarsEffect visualizer", type, size, offset, hzMult, h);
+    nbars = size;
+  }
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    int bar_height = 5;
+    float ts = sin(millis()*.0002f);
+    float i_rad = 187-5*ts;
+    float rot = ts;
+    rectMode(CENTER);
+
+    pushMatrix();
+    translate(x, y);
+    rotate(rot);
+    float diff = 3;
+    int lowIndex = maxIndex, highIndex = maxIndex;
+    for (int i = lowIndex; i > 0; i--) {
+      if (spec[1][i-1] < spec[1][lowIndex]) {
+        lowIndex = max(i - 1, 0);
+      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+        //lowIndex = i - 1;
+      } else {
+        break;
+      }
+
+      if (spec[1][i-1] < diff) {
+        break;
+      }
+    }
+    for (int i = highIndex; i < spec[1].length-2; i++) {
+      if (spec[1][i+1] < spec[1][highIndex]) {
+        highIndex = min(i + 1, spec[1].length-1);
+      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+        //highIndex = i + 1;
+      } else { 
+        break;
+      }
+
+      if (spec[1][i+1] < diff) {
+        break;
+      }
+    }
+
+    if (highIndex == lowIndex) {
+      if (highIndex + 1  < spec[1].length) {
+        highIndex ++;
+      } else {
+        lowIndex --;
+      }
+    }
+
+    int pl = highIndex-lowIndex;
+    int reps = floor(nbars/pl);
+    if (reps %2 != 0) { 
+      reps++;
+    }
+
+    int bandColor = cp.getColors()[colorIndex];
+    float angle = TWO_PI / (pl*reps);
+    float a = 0;
+    float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+    for (int i = 0; i < reps; i ++) {
+
+      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+        pushMatrix();
+        if (i%2 == 0) {
+          rotateZ(a+angle*pcount);
+        } else {
+          rotateZ(a+angle*(pl-pcount-1));
+        }
+
+        for (int j = 0; j < spec[1][pcount]; j++) {
+          float alph = alpha(bandColor);
+          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
+          if (alph-j <= 0) { 
+            break;
+          }
+          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f)));
+          rect(0, s+i_rad + j*bar_height, s, s*2/3);
+        }
+        popMatrix();
+      }
+
+      a+= TWO_PI/PApplet.parseFloat(reps);
+    }
+    popMatrix();
   }
 }
   public void settings() { 

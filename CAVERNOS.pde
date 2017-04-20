@@ -1,5 +1,3 @@
-
-
 import java.util.Arrays;
 import ddf.minim.*;
 import ddf.minim.analysis.*;
