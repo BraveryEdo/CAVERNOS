@@ -139,7 +139,7 @@ public class EqRing extends Effect {
         //use mid third
         wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
       }
-
+      float maxWaveH = 0;
       for (float i = 0; i < width; i+= wScale) {
         float adder = 0;
         for (int j = 0; j < wDepth; j++) {
@@ -147,10 +147,17 @@ public class EqRing extends Effect {
           adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
         }
         s.curveVertex(i/**wScale*/, adder/(sorted[1].length/4));
+        maxWaveH = max(maxWaveH, adder/(sorted[1].length/4));
       }
       s.curveVertex(width, 0);
       s.endShape();
-      shape(s, 0, 0);
+      if (maxWaveH > 5) {
+        if (maxWaveH > 10) {
+            shape(s, 0, 5*sin(millis()*.02));
+        } else {
+          shape(s, 0, 0);
+        }
+      }
       popMatrix();
     }
   }

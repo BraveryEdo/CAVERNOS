@@ -48,7 +48,7 @@ void keyPressed() {
     } else {
       println("spotlightBars disabled");
     }
-  } else if (key  == 'd') {
+  } else if (key  == '1') {
     if (specDispMode != "default") {
       specDispMode = "default";
       for (Band b : ap.bands) {
@@ -60,7 +60,7 @@ void keyPressed() {
     } else {
       println("default spec mode already enabled");
     }
-  } else if (key == 'm') {
+  } else if (key == '2') {
     if (specDispMode != "mirrored") {
       specDispMode = "mirrored";
       for (Band b : ap.bands) {
@@ -72,7 +72,7 @@ void keyPressed() {
     } else {
       println("mirrored spec mode already enabled");
     }
-  } else if (key == 'e') {
+  } else if (key == '3') {
     if (specDispMode != "expanding") {
       specDispMode = "expanding";
       for (Band b : ap.bands) {

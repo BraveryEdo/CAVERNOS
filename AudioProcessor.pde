@@ -118,7 +118,7 @@ public class AudioProcessor {
     if (specDispMode == "default") {
       for (int i = bands.length-1; i >=0; i--) {
         if (bands[i].name == "all") {
-          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/ap.bands.length));
+          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/(ap.bands.length-1)));
         } else {
           bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
         }
@@ -211,7 +211,7 @@ public class AudioProcessor {
 
   Thread logicThread = new Thread(new Runnable() {
     public void run() {
-      System.out.println(Thread.currentThread().getName() + " : logicThreadStarted");
+      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", logicThreadStarted");
 
       while (true) {
         //update audio buffer

@@ -1,6 +1,7 @@
 class SpotlightBarsEffect extends Effect {
 
   int nbars;
+  float spokeAngle = 0;
   SpotlightBarsEffect(int size, int offset, float hzMult, String type, int h) {
     super("SpotlightBarsEffect visualizer", type, size, offset, hzMult, h);
     nbars = size;
@@ -67,6 +68,7 @@ class SpotlightBarsEffect extends Effect {
 
     color bandColor = cp.getColors()[colorIndex];
     float angle = TWO_PI / (pl*reps);
+    spokeAngle = (spokeAngle + angle*floor(random(3*reps)))%TWO_PI;
     float a = 0;
     float s = (i_rad*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
     for (int i = 0; i < reps; i ++) {
@@ -74,9 +76,9 @@ class SpotlightBarsEffect extends Effect {
       for (int pcount = lowIndex; pcount < highIndex; pcount++) {
         pushMatrix();
         if (i%2 == 0) {
-          rotateZ(a+angle*pcount);
+          rotateZ(a+angle*pcount + spokeAngle);
         } else {
-          rotateZ(a+angle*(pl-pcount-1));
+          rotateZ(a+angle*(pl-pcount-1) + spokeAngle);
         }
 
         for (int j = 0; j < spec[1][pcount]; j++) {
