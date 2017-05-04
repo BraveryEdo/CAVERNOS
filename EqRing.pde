@@ -21,7 +21,7 @@ public class EqRing extends Effect {
 
     if (waveForm != "disabled") {
       noCursor();
-      waveForm(0, mouseY, waveH, 0, 0, 0);
+      waveForm(0, height/2.0, waveH, 0, 0, 0);
     } else {
       cursor();
     }
@@ -32,7 +32,7 @@ public class EqRing extends Effect {
     color[] c = cp.getColors();
     color current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex];
+    float gmax = spec[1][maxIndex]*5;
     float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
