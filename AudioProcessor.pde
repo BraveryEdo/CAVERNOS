@@ -5,6 +5,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
+  ReactionDiffusion rf;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -109,12 +110,18 @@ public class AudioProcessor {
     bands[4] = high;
     bands[5] = all;
 
+    rf = new ReactionDiffusion();
+    rf.logicThread.start();
+
     logicThread.start();
     println("audioProcessor started");
     loading--;
   }
 
   void display() {
+    if(!postEffect){
+    background(0); 
+    }
     int c = 0;
     for (Band b : bands) {
 
@@ -122,7 +129,7 @@ public class AudioProcessor {
         b .display(width/4.0, height/4.0, 3*width/4.0, 3*height/4.0);
       } else if (specDispMode == "default") {
         b.display(0, height-((c+1)*height/ap.bands.length), width, height-(c*height/(ap.bands.length-1)));
-      } else if (specDispMode == "mirrored" || specDispMode == "expanding"){
+      } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
         float x = width/2.0;
         float w = height/(ap.bands.length-1);
         float y = height-w*(c+.5);
@@ -133,183 +140,182 @@ public class AudioProcessor {
       }
       c++;
     }
-  
-}
+  }
 
 
 
 
-//reduce each channel's size to n
-public float[][] specResize(float[][] in, int size, float[] last) {
-  if (in[1].length > size) {
-    //scale down size
-    float[][] t = new float[channels][size];
-    int n = in[1].length/size;
-    for (int i = 0; i < size; i ++) {
-      //left/mid/right channels
-      float l = 0, m = 0, r = 0;
-      for (int j = 0; j < n; j++) {
-        l += in[0][i*n + j];
-        m += in[1][i*n + j];
-        r += in[2][i*n + j];
+  //reduce each channel's size to n
+  public float[][] specResize(float[][] in, int size, float[] last) {
+    if (in[1].length > size) {
+      //scale down size
+      float[][] t = new float[channels][size];
+      int n = in[1].length/size;
+      for (int i = 0; i < size; i ++) {
+        //left/mid/right channels
+        float l = 0, m = 0, r = 0;
+        for (int j = 0; j < n; j++) {
+          l += in[0][i*n + j];
+          m += in[1][i*n + j];
+          r += in[2][i*n + j];
+        }
+        t[0][i] = l/n;
+        t[1][i] = m/n;
+        t[2][i] = r/n;
       }
-      t[0][i] = l/n;
-      t[1][i] = m/n;
-      t[2][i] = r/n;
-    }
-    return t;
-  } else if (in[1].length == size) {
-    return in;
-  } else {
-    //scale up size
-    float[][] t = new float[channels][size];
-    float n = ceil(float(size)/float(in[1].length));
-    int count = 0;
-    for (int i = 0; i < in[1].length - 1; i ++) {
+      return t;
+    } else if (in[1].length == size) {
+      return in;
+    } else {
+      //scale up size
+      float[][] t = new float[channels][size];
+      float n = ceil(float(size)/float(in[1].length));
+      int count = 0;
+      for (int i = 0; i < in[1].length - 1; i ++) {
+        //left/mid/right channels
+        float l = in[0][i], m = in[1][i], r = in[2][i];
+        for (int j = 0; j < n; j++) {
+          float mix = float(j)/n;
+          l = lerp(l, in[0][i+1], mix);
+          m = lerp(m, in[1][i+1], mix);
+          r = lerp(r, in[2][i+1], mix);
+
+          t[0][count] = l;
+          t[1][count] = m;
+          t[2][count] = r;
+          count++;
+        }
+      }
+
+      //interpolate between the last given data point and the first point of the next section, if none is present then fade out
+      int len = in[1].length-1;
       //left/mid/right channels
-      float l = in[0][i], m = in[1][i], r = in[2][i];
+      float l = in[0][len], m = in[1][len], r = in[2][len];
+      if (last == null) {
+        last = new float[]{0, 0, 0};
+      }
       for (int j = 0; j < n; j++) {
-        float mix = float(j)/n;
-        l = lerp(l, in[0][i+1], mix);
-        m = lerp(m, in[1][i+1], mix);
-        r = lerp(r, in[2][i+1], mix);
+        float mix = float(max(j-1, 1))/n;
+        l = lerp(l, last[0], mix);
+        m = lerp(m, last[1], mix);
+        r = lerp(r, last[2], mix);
 
         t[0][count] = l;
         t[1][count] = m;
         t[2][count] = r;
         count++;
       }
-    }
 
-    //interpolate between the last given data point and the first point of the next section, if none is present then fade out
-    int len = in[1].length-1;
-    //left/mid/right channels
-    float l = in[0][len], m = in[1][len], r = in[2][len];
-    if (last == null) {
-      last = new float[]{0, 0, 0};
-    }
-    for (int j = 0; j < n; j++) {
-      float mix = float(max(j-1, 1))/n;
-      l = lerp(l, last[0], mix);
-      m = lerp(m, last[1], mix);
-      r = lerp(r, last[2], mix);
-
-      t[0][count] = l;
-      t[1][count] = m;
-      t[2][count] = r;
-      count++;
-    }
-
-    return t;
-  }
-}
-
-
-Thread logicThread = new Thread(new Runnable() {
-  public void run() {
-    System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", logicThreadStarted");
-
-    while (true) {
-      //update audio buffer
-      rfft.forward(in.right);
-      lfft.forward(in.left);
-
-      float min = 999999;
-      float max = -999999;
-      float avg = 0;
-
-      for (int i = 0; i < specSize; i++) {
-        float left_bin = lfft.getBand(i);
-        float right_bin = rfft.getBand(i);
-        float  mix_bin = (left_bin+right_bin)/2.0;
-        magnitude[0][i] = left_bin;
-        magnitude[1][i] = mix_bin;
-        magnitude[2][i] = right_bin;
-        min = min(min, min(mix_bin, min(left_bin, right_bin)));
-        max = max(max, max(mix_bin, max(left_bin, right_bin)));
-        avg += left_bin+mix_bin+right_bin;
-      }
-      avg /= (3* specSize);
-      if (max > 300) {
-        //println(max);
-        for (int i = 0; i < specSize; i++) {
-          float scale = 300.0/(max-min);
-          for (int j = 0; j < magnitude.length; j++) {
-            magnitude[j][i] *= scale;
-          }
-        }
-      } else if (max < 60 && avg > 10) {
-        for (int i = 0; i < specSize; i++) {
-          float scale = 100.0/(max-min);
-          for (int j = 0; j < magnitude.length; j++) {
-            magnitude[j][i] *= scale;
-          }
-        }
-      } else if ( max < 20 && max > 5) {
-        for (int i = 0; i < specSize; i++) {
-          float scale = 50.0/(max-min);
-          for (int j = 0; j < magnitude.length; j++) {
-            magnitude[j][i] *= scale;
-          }
-        }
-      }
-      float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-        Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-        Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
-
-      float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-        Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-        Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
-
-      float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-        Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-        Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
-
-      float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-        Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-        Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
-
-      float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-        Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-        Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
-
-      int newSize = 64;
-      float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
-      float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
-      float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
-      float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
-
-      float[][] sub2 = specResize(subArr, newSize, subLast);
-      float[][] low2 = specResize(lowArr, newSize, lowLast);
-      float[][] mid2 = specResize(midArr, newSize, midLast);
-      float[][] upper2 = specResize(upperArr, newSize, upperLast);
-      float[][] high2 = specResize(highArr, newSize, null);   
-      float[][] all2 = specResize(magnitude, newSize, null);
-
-      sub.stream(sub2);
-      low.stream(low2);
-      mid.stream(mid2);
-      upper.stream(upper2);
-      high.stream(high2);
-      all.stream(all2);
-
-      //------------
-      //framelimiter
-      int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
-      if (timeToWait > 1) {
-        try {
-          //sleep long enough so we aren't faster than the logicFPS
-          Thread.sleep( timeToWait );
-        }
-        catch ( InterruptedException e )
-        {
-          e.printStackTrace();
-          Thread.currentThread().interrupt();
-        }
-      }
-      lastLogicUpdate = millis();
+      return t;
     }
   }
-}
-);
+
+
+  Thread logicThread = new Thread(new Runnable() {
+    public void run() {
+      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", logicThreadStarted");
+
+      while (true) {
+        //update audio buffer
+        rfft.forward(in.right);
+        lfft.forward(in.left);
+
+        float min = 999999;
+        float max = -999999;
+        float avg = 0;
+
+        for (int i = 0; i < specSize; i++) {
+          float left_bin = lfft.getBand(i);
+          float right_bin = rfft.getBand(i);
+          float  mix_bin = (left_bin+right_bin)/2.0;
+          magnitude[0][i] = left_bin;
+          magnitude[1][i] = mix_bin;
+          magnitude[2][i] = right_bin;
+          min = min(min, min(mix_bin, min(left_bin, right_bin)));
+          max = max(max, max(mix_bin, max(left_bin, right_bin)));
+          avg += left_bin+mix_bin+right_bin;
+        }
+        avg /= (3* specSize);
+        if (max > 300) {
+          //println(max);
+          for (int i = 0; i < specSize; i++) {
+            float scale = 300.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if (max < 60 && avg > 10) {
+          for (int i = 0; i < specSize; i++) {
+            float scale = 100.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        } else if ( max < 20 && max > 5) {
+          for (int i = 0; i < specSize; i++) {
+            float scale = 50.0/(max-min);
+            for (int j = 0; j < magnitude.length; j++) {
+              magnitude[j][i] *= scale;
+            }
+          }
+        }
+        float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
+          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
+          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+
+        float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
+          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
+          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
+
+        float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
+          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
+          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
+
+        float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
+          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
+          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
+
+        float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
+          Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
+          Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
+
+        int newSize = 64;
+        float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+        float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+        float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+        float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+        float[][] sub2 = specResize(subArr, newSize, subLast);
+        float[][] low2 = specResize(lowArr, newSize, lowLast);
+        float[][] mid2 = specResize(midArr, newSize, midLast);
+        float[][] upper2 = specResize(upperArr, newSize, upperLast);
+        float[][] high2 = specResize(highArr, newSize, null);   
+        float[][] all2 = specResize(magnitude, newSize, null);
+
+        sub.stream(sub2);
+        low.stream(low2);
+        mid.stream(mid2);
+        upper.stream(upper2);
+        high.stream(high2);
+        all.stream(all2);
+
+        //------------
+        //framelimiter
+        int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
+        if (timeToWait > 1) {
+          try {
+            //sleep long enough so we aren't faster than the logicFPS
+            Thread.sleep( timeToWait );
+          }
+          catch ( InterruptedException e )
+          {
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+          }
+        }
+        lastLogicUpdate = millis();
+      }
+    }
+  }
+  );
 }
