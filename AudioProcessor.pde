@@ -42,6 +42,7 @@ public class AudioProcessor {
     //  println(bottomLimit[i] + ", " + topLimit[i]);
     //}
 
+    logicRate = lr;
     loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
@@ -54,7 +55,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    logicRate = lr;
     lastLogicUpdate = millis();
 
 
@@ -119,9 +119,8 @@ public class AudioProcessor {
   }
 
   void display() {
-    if(!postEffect){
-    background(0); 
-    }
+    
+    
     int c = 0;
     for (Band b : bands) {
 

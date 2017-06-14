@@ -12,19 +12,19 @@ AudioProcessor ap;
 int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
-
+int logicRate = 1000;
 
 
 void setup() {
   loading++;
   size(1000, 700, P3D);
   //fullScreen(P3D);
-  background(255);
+  background(0);
   frameRate(240);
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
-  ap = new AudioProcessor(1000);
+  ap = new AudioProcessor(logicRate);
   loading--;
 }      
 
@@ -35,13 +35,18 @@ void draw() {
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0, height/2.0);
+  } else if(menu){
+    
   } else {
+    if (!postEffect) {
+        background(0);
+    }
     ap.display();
     if (millis() < 5000) {
       textAlign(CENTER);
       textSize(32);
-      fill((5000-millis())/42);
-      text("MENU coming soon...", width/2.0, height/4.0);
+      fill(255-millis()/25);
+      text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
 }

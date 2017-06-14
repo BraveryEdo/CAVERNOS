@@ -19,7 +19,7 @@ public class EqRing extends Effect {
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
 
     if (waveForm != "disabled") {
-      noCursor();
+      //noCursor();
       waveForm(0, height/2.0, waveH, 0, 0, 0);
     }
 

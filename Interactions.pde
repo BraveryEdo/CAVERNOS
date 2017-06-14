@@ -1,5 +1,17 @@
-
+//global variables
 String gradientMode = "none";
+boolean spotlightBars = false;
+boolean ringWave = false;
+boolean postEffect = false;
+boolean menu = false;
+String specDispMode = "default";
+String[] waveTypes = {"additive", "multi", "disabled"};
+String waveForm = waveTypes[0];
+float ringW = 350;
+float step = 1.618;
+
+
+//mouse interaction
 void mouseClicked() {
   if (mouseButton == RIGHT) {
     println("right click");
@@ -19,14 +31,8 @@ void mouseClicked() {
   }
 }
 
-String specDispMode = "default";
-boolean spotlightBars = false;
-boolean ringWave = false;
-boolean postEffect = false;
-String[] waveTypes = {"additive", "multi", "disabled"};
-String waveForm = waveTypes[0];
-float ringW = 350;
-float step = 1.618;
+
+//key interaction
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
@@ -38,6 +44,8 @@ void keyPressed() {
       if (ringW < 0) { 
         ringW+=step;
       }
+    } else if (keyCode == CONTROL) {
+      println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
     }

@@ -68,7 +68,7 @@ class SpotlightBarsEffect extends Effect {
 
     color bandColor = cp.getColors()[colorIndex];
     float angle = TWO_PI / (pl*reps);
-    spokeAngle = (spokeAngle + angle*floor(random(3*reps)))%TWO_PI;
+  spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
     float a = 0;
     float s = (i_rad*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
     for (int i = 0; i < reps; i ++) {
