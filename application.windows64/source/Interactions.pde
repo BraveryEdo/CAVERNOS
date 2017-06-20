@@ -1,5 +1,17 @@
+//global variables
+String gradientMode = "gradient";
+boolean spotlightBars = false;
+boolean ringWave = false;
+boolean postEffect = false;
+boolean menu = false;
+String specDispMode = "default";
+String[] waveTypes = {"additive", "multi", "disabled"};
+String waveForm = waveTypes[0];
+float ringW = 350;
+float step = 1.618;
 
-String gradientMode = "none";
+
+//mouse interaction
 void mouseClicked() {
   if (mouseButton == RIGHT) {
     println("right click");
@@ -19,34 +31,42 @@ void mouseClicked() {
   }
 }
 
-String specDispMode = "default";
-boolean spotlightBars = true;
-boolean ringWave = false;
-String[] waveTypes = {"additive", "multi", "disabled"};
-String waveForm = waveTypes[0];
-float ringW = 350;
-float step = 1.618;
+
+//key interaction
 void keyPressed() {
   if (key == CODED) {
-    if (keyCode == VK_F1) {
-      println("F1 menu shown");
-      println("F1 menu hidden");
-    } else if (keyCode == UP) {
+    if (keyCode == UP) {
       println("UP arrow key");
       ringW += step;
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
       ringW -= step;
-      if(ringW < 0){ ringW+=step;}
+      if (ringW < 0) { 
+        ringW+=step;
+      }
+    } else if (keyCode == CONTROL) {
+      println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
     }
-  } else if (key == 's') {
+  } else if (key == '9') {
     spotlightBars = !spotlightBars;
     if (spotlightBars) {
       println("spotlightBars enabled");
     } else {
       println("spotlightBars disabled");
+    }
+  } else if (key == '0') {
+    if (specDispMode != "off") {
+      specDispMode = "off";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("spec display turned off");
+    } else {
+      println("spec display turned off");
     }
   } else if (key  == '1') {
     if (specDispMode != "default") {
@@ -84,9 +104,16 @@ void keyPressed() {
     } else {
       println("expanding spec mode already enabled");
     }
+  } else if (key == '4') {
+    if (postEffect) {
+      println("ReactionDiffusion postEffect disabled");
+    } else {
+      println("ReactionDiffusion postEffect enabled");
+    }
+    postEffect = !postEffect;
   } else if (key == 'w') {
-      waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
-      println("waveForm set to: " + waveForm);
+    waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
+    println("waveForm set to: " + waveForm);
   } else if (key == 'r') {
     ringWave = !ringWave;
     if (ringWave) {

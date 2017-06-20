@@ -39,9 +39,8 @@ public class ExpandingVis extends Effect {
     for (int hd = histDepth-1; hd >= 0; hd--) {
       current = hist[hd][colorIndex];
       if (colorIndex == 0) {
-        for (int i = 1; i < hist.length; i++) {
-          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
-        }
+        //current = hist[0][colorIndex];
+
         prev = hist[1][colorIndex];
         next =  hist[0][colorIndex];
       } else if (colorIndex == 1) {

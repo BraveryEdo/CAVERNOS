@@ -1,4 +1,5 @@
 class BarsEffect extends Effect {
+  PGraphics pg;
   int nbars;
   BarsEffect(int size, int offset, float hzMult, String type, int h) {
     super("BarsEffect visualizer", type, size, offset, hzMult, h);
@@ -13,6 +14,7 @@ class BarsEffect extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    pg = createGraphics(width,height);
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
@@ -21,14 +23,14 @@ class BarsEffect extends Effect {
     float rot = ts;
 
     float s = (i_rad*PI/nbars)*.8;
-    rectMode(CENTER);
+    pg.rectMode(CENTER);
 
-    pushMatrix();
-    translate(x, y);
-    rotate(rot);
+    pg.pushMatrix();
+    pg.translate(x, y);
+    pg.rotate(rot);
     for (int i = 0; i < nbars; i ++) {
-      pushMatrix();
-      rotateZ(a);
+      pg.pushMatrix();
+      pg.rotateZ(a);
       float r = random(255);
       float b = random(255);
       float g = random(255);
@@ -39,12 +41,13 @@ class BarsEffect extends Effect {
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7));
-        rect(0, s+i_rad + j*bar_height, s, s*2/3);
+        pg.stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7));
+        pg.rect(0, s+i_rad + j*bar_height, s, s*2/3);
       }
-      popMatrix();
+      pg.popMatrix();
       a+= angle;
     }
-    popMatrix();
+    pg.popMatrix();
+    image(pg,0,0);
   }
 }

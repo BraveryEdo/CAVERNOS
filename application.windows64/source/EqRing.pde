@@ -2,11 +2,10 @@
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[3];
     subEffects[0] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[1] = new MirroredBarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[1] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
+    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -20,10 +19,8 @@ public class EqRing extends Effect {
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
 
     if (waveForm != "disabled") {
-      noCursor();
-      waveForm(0, mouseY, waveH, 0, 0, 0);
-    } else {
-      cursor();
+      //noCursor();
+      waveForm(0, height/2.0, waveH, 0, 0, 0);
     }
 
 
@@ -32,28 +29,22 @@ public class EqRing extends Effect {
     color[] c = cp.getColors();
     color current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex];
+    float gmax = spec[1][maxIndex]*5;
     float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
     float i_rad = 187-5*s;
-    float o_rad = (i_rad+gmax*5);
+    float o_rad = (i_rad*1.33+gmax*1.33);
 
     stroke(current);
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
     if (spotlightBars) {
-      //spotlightBars(_x, _y, i_rad, s);
-      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
-    } else if (specDispMode == "mirrored") {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
-      //MirroredBars(_x, _y, i_rad, s);
     } else {
-      //spBars(_x, _y, i_rad, s);
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
-      //bars(_x, _y, i_rad, s);
+      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
 
+    ring(_x, _y, nbars, i_rad, o_rot, false);
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
@@ -152,7 +143,7 @@ public class EqRing extends Effect {
       s.curveVertex(width, 0);
       s.endShape();
       if (maxWaveH > 5) {
-        if (maxWaveH > 10) {
+        if (maxWaveH > 15) {
             shape(s, 0, 5*sin(millis()*.02));
         } else {
           shape(s, 0, 0);

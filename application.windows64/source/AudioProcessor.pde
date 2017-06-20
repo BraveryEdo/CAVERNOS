@@ -5,6 +5,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
+  ReactionDiffusion rf;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -41,6 +42,7 @@ public class AudioProcessor {
     //  println(bottomLimit[i] + ", " + topLimit[i]);
     //}
 
+    logicRate = lr;
     loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
@@ -53,7 +55,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    logicRate = lr;
     lastLogicUpdate = millis();
 
 
@@ -109,34 +110,34 @@ public class AudioProcessor {
     bands[4] = high;
     bands[5] = all;
 
+    rf = new ReactionDiffusion();
+    rf.logicThread.start();
+
     logicThread.start();
     println("audioProcessor started");
     loading--;
   }
 
   void display() {
-    if (specDispMode == "default") {
-      for (int i = bands.length-1; i >=0; i--) {
-        if (bands[i].name == "all") {
-          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/(ap.bands.length-1)));
-        } else {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
-        }
-      }
-    } else {
-      for (int i = bands.length-1; i >=0; i--) {
-        if (bands[i].name == "all") {
-          bands[i].display(width/4.0, 3*height/4, 3*width/4.0, height-(height/(ap.bands.length-1)));
-        } else {
-          float x = width/2.0;
-          float w = height/(ap.bands.length-1);
-          float y = height-w*(i+.5);
-          float h = width/(ap.bands.length-1);
+    
+    
+    int c = 0;
+    for (Band b : bands) {
 
-          bands[i].display(x-h/2.0, y, h, w, 0, 0, -PI/2);
-          bands[i].display(x+h/2.0, y, h, w, PI, 0, PI/2);
-        }
+      if (b.name == "all") {
+        b .display(width/4.0, height/4.0, 3*width/4.0, 3*height/4.0);
+      } else if (specDispMode == "default") {
+        b.display(0, height-((c+1)*height/ap.bands.length), width, height-(c*height/(ap.bands.length-1)));
+      } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
+        float x = width/2.0;
+        float w = height/(ap.bands.length-1);
+        float y = height-w*(c+.5);
+        float h = width/(ap.bands.length-1);
+
+        b.display(x-h/2.0, y, h, w, 0, 0, -PI/2);
+        b.display(x+h/2.0, y, h, w, PI, 0, PI/2);
       }
+      c++;
     }
   }
 
@@ -193,7 +194,7 @@ public class AudioProcessor {
         last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
-        float mix = float(max(j-1,1))/n;
+        float mix = float(max(j-1, 1))/n;
         l = lerp(l, last[0], mix);
         m = lerp(m, last[1], mix);
         r = lerp(r, last[2], mix);
@@ -249,8 +250,8 @@ public class AudioProcessor {
               magnitude[j][i] *= scale;
             }
           }
-        } else if( max < 20 && max > 5){
-           for (int i = 0; i < specSize; i++) {
+        } else if ( max < 20 && max > 5) {
+          for (int i = 0; i < specSize; i++) {
             float scale = 50.0/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;

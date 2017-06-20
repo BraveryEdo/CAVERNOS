@@ -150,7 +150,7 @@ public class Band {
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
-            Thread.currentThread().sleep( timeToWait );
+            Thread.sleep( timeToWait );
             //Thread.sleep( timeToWait );
           }
           catch ( InterruptedException e )

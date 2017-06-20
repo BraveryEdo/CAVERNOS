@@ -33,37 +33,41 @@ AudioProcessor ap;
 int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
-
+int logicRate = 1000;
 
 
 public void setup() {
   loading++;
-  //size(1000, 700, P3D);
-
-  background(255);
+  
+  //fullScreen(P3D);
+  background(0);
   frameRate(240);
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
-  ap = new AudioProcessor(1000);
+  ap = new AudioProcessor(logicRate);
   loading--;
 }      
 
 
 public void draw() {
-  background(0);
   if (loading != 0) {
     println("loading counter: ", loading);
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0f, height/2.0f);
+  } else if(menu){
+    
   } else {
+    if (!postEffect) {
+        background(0);
+    }
     ap.display();
     if (millis() < 5000) {
       textAlign(CENTER);
       textSize(32);
-      fill((5000-millis())/42);
-      text("MENU coming soon...", width/2.0f, height/4.0f);
+      fill(255-millis()/25);
+      text("Press CTRL to toggle menu...", width/2.0f, height/4.0f);
     }
   }
 }
@@ -74,6 +78,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
+  ReactionDiffusion rf;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -110,6 +115,7 @@ public class AudioProcessor {
     //  println(bottomLimit[i] + ", " + topLimit[i]);
     //}
 
+    logicRate = lr;
     loading++;
     minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
@@ -122,7 +128,6 @@ public class AudioProcessor {
 
     //spectrum is divided into left, mix, and right channels
     magnitude = new float[channels][specSize];
-    logicRate = lr;
     lastLogicUpdate = millis();
 
 
@@ -178,34 +183,34 @@ public class AudioProcessor {
     bands[4] = high;
     bands[5] = all;
 
+    rf = new ReactionDiffusion();
+    rf.logicThread.start();
+
     logicThread.start();
     println("audioProcessor started");
     loading--;
   }
 
   public void display() {
-    if (specDispMode == "default") {
-      for (int i = bands.length-1; i >=0; i--) {
-        if (bands[i].name == "all") {
-          bands[i].display(width/4.0f, 3*height/4, 3*width/4.0f, height-(height/(ap.bands.length-1)));
-        } else {
-          bands[i].display(0, height-((i+1)*height/ap.bands.length), width, height-(i*height/(ap.bands.length-1)));
-        }
-      }
-    } else {
-      for (int i = bands.length-1; i >=0; i--) {
-        if (bands[i].name == "all") {
-          bands[i].display(width/4.0f, 3*height/4, 3*width/4.0f, height-(height/(ap.bands.length-1)));
-        } else {
-          float x = width/2.0f;
-          float w = height/(ap.bands.length-1);
-          float y = height-w*(i+.5f);
-          float h = width/(ap.bands.length-1);
+    
+    
+    int c = 0;
+    for (Band b : bands) {
 
-          bands[i].display(x-h/2.0f, y, h, w, 0, 0, -PI/2);
-          bands[i].display(x+h/2.0f, y, h, w, PI, 0, PI/2);
-        }
+      if (b.name == "all") {
+        b .display(width/4.0f, height/4.0f, 3*width/4.0f, 3*height/4.0f);
+      } else if (specDispMode == "default") {
+        b.display(0, height-((c+1)*height/ap.bands.length), width, height-(c*height/(ap.bands.length-1)));
+      } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
+        float x = width/2.0f;
+        float w = height/(ap.bands.length-1);
+        float y = height-w*(c+.5f);
+        float h = width/(ap.bands.length-1);
+
+        b.display(x-h/2.0f, y, h, w, 0, 0, -PI/2);
+        b.display(x+h/2.0f, y, h, w, PI, 0, PI/2);
       }
+      c++;
     }
   }
 
@@ -262,7 +267,7 @@ public class AudioProcessor {
         last = new float[]{0, 0, 0};
       }
       for (int j = 0; j < n; j++) {
-        float mix = PApplet.parseFloat(max(j-1,1))/n;
+        float mix = PApplet.parseFloat(max(j-1, 1))/n;
         l = lerp(l, last[0], mix);
         m = lerp(m, last[1], mix);
         r = lerp(r, last[2], mix);
@@ -318,8 +323,8 @@ public class AudioProcessor {
               magnitude[j][i] *= scale;
             }
           }
-        } else if( max < 20 && max > 5){
-           for (int i = 0; i < specSize; i++) {
+        } else if ( max < 20 && max > 5) {
+          for (int i = 0; i < specSize; i++) {
             float scale = 50.0f/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
@@ -538,7 +543,7 @@ public class Band {
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
-            Thread.currentThread().sleep( timeToWait );
+            Thread.sleep( timeToWait );
             //Thread.sleep( timeToWait );
           }
           catch ( InterruptedException e )
@@ -554,6 +559,7 @@ public class Band {
   );
 }
 class BarsEffect extends Effect {
+  PGraphics pg;
   int nbars;
   BarsEffect(int size, int offset, float hzMult, String type, int h) {
     super("BarsEffect visualizer", type, size, offset, hzMult, h);
@@ -568,6 +574,7 @@ class BarsEffect extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    pg = createGraphics(width,height);
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
@@ -576,14 +583,14 @@ class BarsEffect extends Effect {
     float rot = ts;
 
     float s = (i_rad*PI/nbars)*.8f;
-    rectMode(CENTER);
+    pg.rectMode(CENTER);
 
-    pushMatrix();
-    translate(x, y);
-    rotate(rot);
+    pg.pushMatrix();
+    pg.translate(x, y);
+    pg.rotate(rot);
     for (int i = 0; i < nbars; i ++) {
-      pushMatrix();
-      rotateZ(a);
+      pg.pushMatrix();
+      pg.rotateZ(a);
       float r = random(255);
       float b = random(255);
       float g = random(255);
@@ -594,13 +601,14 @@ class BarsEffect extends Effect {
           break;
         }
         //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+i_rad + j*bar_height, s, s*2/3);
+        pg.stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
+        pg.rect(0, s+i_rad + j*bar_height, s, s*2/3);
       }
-      popMatrix();
+      pg.popMatrix();
       a+= angle;
     }
-    popMatrix();
+    pg.popMatrix();
+    image(pg,0,0);
   }
 }
 public class ColorPicker {
@@ -1082,11 +1090,10 @@ public class EffectManager {
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[3];
     subEffects[0] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[1] = new MirroredBarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[1] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
+    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -1100,10 +1107,8 @@ public class EqRing extends Effect {
   public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
 
     if (waveForm != "disabled") {
-      noCursor();
-      waveForm(0, mouseY, waveH, 0, 0, 0);
-    } else {
-      cursor();
+      //noCursor();
+      waveForm(0, height/2.0f, waveH, 0, 0, 0);
     }
 
 
@@ -1112,28 +1117,22 @@ public class EqRing extends Effect {
     int[] c = cp.getColors();
     int current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex];
+    float gmax = spec[1][maxIndex]*5;
     float s = sin((t)*.0002f);
 
     float o_rot = -.75f*s;
     float i_rad = 187-5*s;
-    float o_rad = (i_rad+gmax*5);
+    float o_rad = (i_rad*1.33f+gmax*1.33f);
 
     stroke(current);
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
     if (spotlightBars) {
-      //spotlightBars(_x, _y, i_rad, s);
-      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
-    } else if (specDispMode == "mirrored") {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
-      //MirroredBars(_x, _y, i_rad, s);
     } else {
-      //spBars(_x, _y, i_rad, s);
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
-      //bars(_x, _y, i_rad, s);
+      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
 
+    ring(_x, _y, nbars, i_rad, o_rot, false);
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
@@ -1232,7 +1231,7 @@ public class EqRing extends Effect {
       s.curveVertex(width, 0);
       s.endShape();
       if (maxWaveH > 5) {
-        if (maxWaveH > 10) {
+        if (maxWaveH > 15) {
             shape(s, 0, 5*sin(millis()*.02f));
         } else {
           shape(s, 0, 0);
@@ -1341,9 +1340,8 @@ public class ExpandingVis extends Effect {
     for (int hd = histDepth-1; hd >= 0; hd--) {
       current = hist[hd][colorIndex];
       if (colorIndex == 0) {
-        for (int i = 1; i < hist.length; i++) {
-          current = lerpColor(current, hist[i][colorIndex], 1/hist.length);
-        }
+        //current = hist[0][colorIndex];
+
         prev = hist[1][colorIndex];
         next =  hist[0][colorIndex];
       } else if (colorIndex == 1) {
@@ -1390,8 +1388,20 @@ public class ExpandingVis extends Effect {
     }
   }
 }
+//global variables
+String gradientMode = "gradient";
+boolean spotlightBars = false;
+boolean ringWave = false;
+boolean postEffect = false;
+boolean menu = false;
+String specDispMode = "default";
+String[] waveTypes = {"additive", "multi", "disabled"};
+String waveForm = waveTypes[0];
+float ringW = 350;
+float step = 1.618f;
 
-String gradientMode = "none";
+
+//mouse interaction
 public void mouseClicked() {
   if (mouseButton == RIGHT) {
     println("right click");
@@ -1411,34 +1421,42 @@ public void mouseClicked() {
   }
 }
 
-String specDispMode = "default";
-boolean spotlightBars = true;
-boolean ringWave = false;
-String[] waveTypes = {"additive", "multi", "disabled"};
-String waveForm = waveTypes[0];
-float ringW = 350;
-float step = 1.618f;
+
+//key interaction
 public void keyPressed() {
   if (key == CODED) {
-    if (keyCode == VK_F1) {
-      println("F1 menu shown");
-      println("F1 menu hidden");
-    } else if (keyCode == UP) {
+    if (keyCode == UP) {
       println("UP arrow key");
       ringW += step;
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
       ringW -= step;
-      if(ringW < 0){ ringW+=step;}
+      if (ringW < 0) { 
+        ringW+=step;
+      }
+    } else if (keyCode == CONTROL) {
+      println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
     }
-  } else if (key == 's') {
+  } else if (key == '9') {
     spotlightBars = !spotlightBars;
     if (spotlightBars) {
       println("spotlightBars enabled");
     } else {
       println("spotlightBars disabled");
+    }
+  } else if (key == '0') {
+    if (specDispMode != "off") {
+      specDispMode = "off";
+      for (Band b : ap.bands) {
+        if (b.name != "all") {
+          b.effectManager.switchEffect(specDispMode);
+        }
+      }
+      println("spec display turned off");
+    } else {
+      println("spec display turned off");
     }
   } else if (key  == '1') {
     if (specDispMode != "default") {
@@ -1476,9 +1494,16 @@ public void keyPressed() {
     } else {
       println("expanding spec mode already enabled");
     }
+  } else if (key == '4') {
+    if (postEffect) {
+      println("ReactionDiffusion postEffect disabled");
+    } else {
+      println("ReactionDiffusion postEffect enabled");
+    }
+    postEffect = !postEffect;
   } else if (key == 'w') {
-      waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
-      println("waveForm set to: " + waveForm);
+    waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
+    println("waveForm set to: " + waveForm);
   } else if (key == 'r') {
     ringWave = !ringWave;
     if (ringWave) {
@@ -1488,71 +1513,6 @@ public void keyPressed() {
     }
   } else {
     println("unhandled key: " + key);
-  }
-}
-class MirroredBarsEffect extends Effect {
-  int nbars;
-  MirroredBarsEffect(int size, int offset, float hzMult, String type, int h) {
-    super("MirroredBarsEffect visualizer", type, size, offset, hzMult, h);
-    nbars = size;
-  }
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
-  }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-
-    float angle = TWO_PI / (nbars*2);
-    float a = 0;
-    int bar_height = 5;
-    float ts = sin(millis()*.0002f);
-    float i_rad = 187-5*ts;
-    float rot = ts;
-
-    float s = (i_rad*PI/ nbars)*.8f;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(x, y);
-    rotate(rot);
-    for (int i = 0; i < nbars; i ++) {
-      float r = 128;
-      float b = 128;
-      float g = 128;
-      float z = random(5); 
-      pushMatrix();
-      rotateZ(PI+a);
-      for (int j = 0; j < spec[1][(nbars-1)-i]; j++) {
-        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
-          break;
-        }
-        //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor((nbars-1)-i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+i_rad + j*bar_height, s, s*2/3);
-      }
-      popMatrix();
-
-      pushMatrix();
-      rotateY(PI);
-      rotateZ(PI+a+angle);
-      for (int j = 0; j < spec[1][i]; j++) {
-        //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-        if (r-j <= 0 || b-j <= 0 || g-j <= 0) { 
-          break;
-        }
-        //stroke(r-j, b-j, g-j, 120+z*j);
-        stroke(lerpColor(calcColor(i), color(r-j, b-j, g-j, 120+z*j), .7f));
-        rect(0, s+i_rad + j*bar_height, s, s*2/3);
-      }
-      popMatrix();
-
-      a+= angle;
-    }
-    popMatrix();
   }
 }
 public class MirroredVerticalVis extends Effect {
@@ -1622,154 +1582,76 @@ public class MirroredVerticalVis extends Effect {
     }
   }
 }
-class SphereBars extends Effect {
-  int nbars;
-  float spokeAngle = 0;
+class ReactionDiffusion {
+  Float[] r, g, b, a;
+  Float[] r2, g2, b2, a2;
+  Float[][][] hist;
+  Float[][][] convolutions;
+  Float scale = (1.0f/1.0f);
   int lastLogicUpdate;
-  
-  //implemented like a stack
-  PGraphics[] layers;
-  //calculations for the latest layer
-  //each outer array contains a ring
-  //middle array holds each spoke (variable depending on petal length) 
-  //each inner array holds x,y locations for each sphere on the spoke
-  ArrayList<ArrayList<ArrayList<Float[]>>> calculations;
-  SphereBars(int size, int offset, float hzMult, String type, int h) {
-    super("SphereBars visualizer", type, size, offset, hzMult, h);
-    nbars = size;
+  float w, h;
+
+  ReactionDiffusion() {
+    convolutions = new Float[][][]
+      {//{{{1.0, 2.0, 1.0}, 
+      //  {2.0, 4.0, 2.0}, 
+      //{1.0, 2.0, 1.0}}, 
+      //{{0.5, 2.0, 0.5}, 
+      //  {1.0, 4.0, 1.0}, 
+      //{2.0, 2.2, 2.0}}, 
+      //{{2.0, 2.0, 2.0}, 
+      //  {2.0, 4.0, 2.0}, 
+      //{2.0, 2.0, 2.0}}, 
+      //{{0.0, -1.0, 0.0}, 
+      //  {-1.0, 5.0, -1.0}, 
+      //{0.0, -1.0, 0.0}},
+{{0.0f, 0.0f, 1.0f}, 
+        {0.0f, 0.0f, 1.0f}, 
+      {0.0f, 0.0f, 1.0f}}};
     lastLogicUpdate = millis();
-    
-    calculations = new ArrayList<ArrayList<ArrayList<Float[]>>>();
-    layers = new PGraphics[h];
-    for(int i = 0; i < h; i++){
-       layers[i] = createGraphics(width,height,P3D); 
-    }
-    //sphereThread.start();
+    init();
   }
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
-  }
-
-  public void display(float x, float y, float h1, float w, float rx, float ry, float rz) {
-    sphereDetail(8);
-    rectMode(CENTER);
-    int bar_height = 5;
-        float ts = sin(millis()*.0002f);
-        float i_rad = 187-5*ts;
-        float rot = ts;
-        pushMatrix();
-        translate(x, y);
-        rotate(rot);
-        float diff = 3;
-        int lowIndex = maxIndex, highIndex = maxIndex;
-        for (int i = lowIndex; i > 0; i--) {
-          if (spec[1][i-1] < spec[1][lowIndex]) {
-            lowIndex = max(i - 1, 0);
-          } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
-            //lowIndex = i - 1;
-          } else {
-            break;
-          }
-
-          if (spec[1][i-1] < diff) {
-            break;
-          }
-        }
-        for (int i = highIndex; i < spec[1].length-2; i++) {
-          if (spec[1][i+1] < spec[1][highIndex]) {
-            highIndex = min(i + 1, spec[1].length-1);
-          } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
-            //highIndex = i + 1;
-          } else { 
-            break;
-          }
-
-          if (spec[1][i+1] < diff) {
-            break;
-          }
-        }
-
-        if (highIndex == lowIndex) {
-          if (highIndex + 1  < spec[1].length) {
-            highIndex ++;
-          } else {
-            lowIndex --;
-          }
-        }
-
-        int pl = highIndex-lowIndex;
-        int reps = floor(nbars/pl);
-        if (reps %2 != 0) { 
-          reps++;
-        }
-
-        int bandColor = cp.getColors()[colorIndex];
-        float angle = TWO_PI / (pl*reps);
-        spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
-        float a = 0;
-        float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
-        for (int i = 0; i < reps; i ++) {
-          for (int pcount = lowIndex; pcount < highIndex; pcount++) {
-            pushMatrix();
-            float r = 0;
-            if (i%2 == 0) {
-              r = (a+angle*pcount + spokeAngle);
-            } else {
-              r = (a+angle*(pl-pcount-1) + spokeAngle);
-            }
-
-            for (float j = max(spec[1][pcount]*sin(millis()*.002f)+1, 0); j < spec[1][pcount]; ) {
-              float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
-              if (alph >= 0) {
-
-
-                float h = (s+i_rad + (.5f+j)*bar_height);
-                float sx = h*sin(r); 
-                float sy = h*cos(r);
-                float sz = angle*h;
-
-                if (millis()%10000 > 5000) {
-                  int dupes = 2+ceil(millis()*.002f%5)*2;
-                  for (int dupe = 0; dupe < dupes; dupe++) { 
-                    int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
-                    fill(qs);
-                    noStroke();
-                    pushMatrix();
-                    rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
-                    rotateX(millis()*.002f + dupe*TWO_PI/dupes);
-                    rotateZ(spokeAngle);
-                    translate(sx, sy, 0);
-                    sphere(sz);
-                    popMatrix();
-                  }
-                }
-                int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
-                fill(q);
-                stroke(q);
-                ellipse(sx, sy, sz, sz);
-              }
-              j+= bar_height*(.6f + .1515f*sin(millis()*.002f));
-            }
-
-            popMatrix();
-          }
-
-          a+= TWO_PI/PApplet.parseFloat(reps);
-        }
-        popMatrix();
-    
+  public void init() {
+    loadPixels();
+    w = width;
+    h = height;
+    int pl = pixels.length;
+    r = new Float[pl];
+    g = new Float[pl];
+    b = new Float[pl];
+    a = new Float[pl];
+    r2 = new Float[pl];
+    g2 = new Float[pl];
+    b2 = new Float[pl];
+    a2 = new Float[pl];
+    hist = new Float[4][histSize][pl];
   }
 
-
-
-  Thread sphereThread = new Thread(new Runnable() {
+  Thread logicThread = new Thread(new Runnable() {
     public void run() {
-      System.out.println("SphereBars running on: " + Thread.currentThread().getName() + ", sphereThreadStarted");
+
       while (true) {
-         // height-(height/(ap.bands.length-1)
+        if (postEffect) {
+          if (width != w || height != h) {
+            init();
+          }
+
+          loadPixels();
+          int pl = pixels.length;
+          for (int i = 0; i < pl; i++) {
+            int c = pixels[i];
+            r[i] = red(c);
+            g[i] = green(c);
+            b[i] = blue(c);
+            a[i] = alpha(c);
+          }
+
+          convolve();
+          shiftHist();
+          combine();
+
+          updatePixels();
+        }
         //------------
         //framelimiter
         int timeToWait = 1000/ap.logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
@@ -1789,6 +1671,226 @@ class SphereBars extends Effect {
     }
   }
   );
+
+  public void combine() {
+    int[] pixtemp = new int[pixels.length];
+    for (int i = hist[0].length-1; i >= 0; i++) {
+      for (int p = 0; p < hist[0][0].length; p++) {
+        int c = color(hist[0][i][p], hist[1][i][p], hist[2][i][p], hist[3][i][p]);
+        pixtemp[p] += c;
+      }
+    }
+    pixels = pixtemp;
+  }
+
+  public void shiftHist() {
+
+    Float[][] outs = {r2, g2, b2, a2};
+    //for (int q = 0; q < pixels.length; q++) {
+    //  pixels[q]-= color(hist[0][0][q], hist[1][0][q], hist[2][0][q], hist[3][0][q]);
+    //}
+    for (int i = 0; i < outs.length; i++) {
+      for (int t = hist[i].length-1; t > 0; t--) {
+        hist[i][t] = hist[i][t-1];
+      }
+      hist[i][0] = outs[i];
+    }
+  }
+
+  public void convolve() {
+
+    Float[][] ins = {r, g, b, a};
+    Float[][] outs = {r2, g2, b2, a2};
+
+    for (int i = 0; i < ins.length; i++) {
+      for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+          int pixelIndex = x+ width*y;
+
+          Float colorIn = ins[i][pixelIndex];
+
+          //apply each part of the convolutions matricies to each color part
+          for (int conv = 0; conv < convolutions.length; conv++) {
+            Float[][] convArr = convolutions[conv];
+            for (int row = 0; row <  convArr.length; row++ ) {
+              Float[] convRow = convArr[row];
+              for (int col = 0; col < convRow.length; col++) {
+                Float f = convRow[col]*scale;
+                int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
+                int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
+                int outIndex = x_out+ width*y_out; 
+                outs[i][outIndex] = f*colorIn;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+class SphereBars extends Effect {
+  int nbars;
+  int histSize;
+  float spokeAngle = 0;
+  int lastLogicUpdate;
+  //0->h newest->oldest
+  PGraphics[] layers;
+  SphereBars(int size, int offset, float hzMult, String type, int h) {
+    super("SphereBars visualizer", type, size, offset, hzMult, h);
+
+    lastLogicUpdate = millis();
+    nbars = size;
+    histSize = h;
+    init();
+  }
+
+  public void init() {
+    layers = new PGraphics[histSize];
+    PGraphics clear = createGraphics(width,height,P3D);
+    clear.beginDraw();
+    clear.clear();
+    clear.endDraw();
+    for (int i = 0; i < histSize; i++) {
+      layers[i] = clear;
+    }
+  }
+
+  public void shiftLayers() {
+    for (int i = histSize-1; i > 0; i--) {
+      layers[i] = layers[i-1];
+    }
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h2, float w, float rx, float ry, float rz) {
+    if (width != layers[0].width || height!= layers[0].height) {
+      init();
+    }
+    if (1000/logicRate - (millis()-lastLogicUpdate) <= 0) {
+      shiftLayers();
+      PGraphics pg = layers[0];
+      pg.beginDraw();
+      pg.background(128-128*sin((millis()-lastLogicUpdate)*.01f*spec[1][maxIndex]),0);
+      pg.sphereDetail(8);
+      pg.rectMode(CENTER);
+      int bar_height = 5;
+      float ts = sin(millis()*.0002f);
+      float i_rad = 187-5*ts;
+      float rot = ts;
+      pg.pushMatrix();
+      pg.translate(x, y);
+      pg.rotate(rot);
+      float diff = 3;
+      int lowIndex = maxIndex, highIndex = maxIndex;
+      for (int i = lowIndex; i > 0; i--) {
+        if (spec[1][i-1] < spec[1][lowIndex]) {
+          lowIndex = max(i - 1, 0);
+        } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
+          //lowIndex = i - 1;
+        } else {
+          break;
+        }
+
+        if (spec[1][i-1] < diff) {
+          break;
+        }
+      }
+      for (int i = highIndex; i < spec[1].length-2; i++) {
+        if (spec[1][i+1] < spec[1][highIndex]) {
+          highIndex = min(i + 1, spec[1].length-1);
+        } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
+          //highIndex = i + 1;
+        } else { 
+          break;
+        }
+
+        if (spec[1][i+1] < diff) {
+          break;
+        }
+      }
+
+      if (highIndex == lowIndex) {
+        if (highIndex + 1  < spec[1].length) {
+          highIndex ++;
+        } else {
+          lowIndex --;
+        }
+      }
+
+      int pl = highIndex-lowIndex;
+      int reps = floor(nbars/pl);
+      if (reps %2 != 0) { 
+        reps++;
+      }
+
+      int bandColor = cp.getColors()[colorIndex];
+      float angle = TWO_PI / (pl*reps);
+      spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
+      float a = 0;
+      float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+      for (int i = 0; i < reps; i ++) {
+        for (int pcount = lowIndex; pcount < highIndex; pcount++) {
+          pg.pushMatrix();
+          float r = 0;
+          if (i%2 == 0) {
+            r = (a+angle*pcount + spokeAngle);
+          } else {
+            r = (a+angle*(pl-pcount-1) + spokeAngle);
+          }
+
+          for (float j = max(spec[1][pcount]*sin(millis()*.002f)+1, 0); j < spec[1][pcount]; ) {
+            float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
+            if (alph >= 0) {
+
+
+              float h = (s+i_rad + (.5f+j)*bar_height);
+              float sx = h*sin(r); 
+              float sy = h*cos(r);
+              float sz = angle*h;
+               boolean spheremode = millis()%10000 > 5000;
+              if (spheremode) {
+                int dupes = 2+ceil(millis()*.002f%5)*2;
+                for (int dupe = 0; dupe < dupes; dupe++) { 
+                  int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
+                  pg.fill(qs);
+                  pg.noStroke();
+                  pg.pushMatrix();
+                  pg.rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
+                  pg.rotateX(millis()*.002f + dupe*TWO_PI/dupes);
+                  pg.rotateZ(spokeAngle);
+                  pg.translate(sx, sy, 0);
+                  pg.sphere(sz);
+                  pg.popMatrix();
+                }
+              }
+              int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
+              pg.fill(q);
+              pg.stroke(q);
+              pg.ellipse(sx, sy, sz, sz);
+            }
+            j+= bar_height*(.6f + .1515f*sin(millis()*.002f));
+          }
+
+          pg.popMatrix();
+        }
+
+        a+= TWO_PI/PApplet.parseFloat(reps);
+      }
+      pg.popMatrix();
+      pg.endDraw();
+    }    
+
+    for(int i = /*histSize-1*/0; i >= 0; i--){
+      image(layers[i], 0, 0);
+    }
+    
+  }
 }
 class SpotlightBarsEffect extends Effect {
 
@@ -1860,7 +1962,7 @@ class SpotlightBarsEffect extends Effect {
 
     int bandColor = cp.getColors()[colorIndex];
     float angle = TWO_PI / (pl*reps);
-    spokeAngle = (spokeAngle + angle*floor(random(3*reps)))%TWO_PI;
+  spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
     float a = 0;
     float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
     for (int i = 0; i < reps; i ++) {
@@ -1890,8 +1992,7 @@ class SpotlightBarsEffect extends Effect {
     popMatrix();
   }
 }
-  public void settings() { 
-fullScreen(P3D); }
+  public void settings() {  size(1000, 700, P3D); }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "CAVERNOS" };
     if (passedArgs != null) {
