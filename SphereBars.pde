@@ -46,7 +46,7 @@ class SphereBars extends Effect {
       shiftLayers();
       PGraphics pg = layers[0];
       pg.beginDraw();
-      pg.clear();
+      pg.background(128-128*sin((millis()-lastLogicUpdate)*.01*spec[1][maxIndex]),0);
       pg.sphereDetail(8);
       pg.rectMode(CENTER);
       int bar_height = 5;
@@ -123,8 +123,8 @@ class SphereBars extends Effect {
               float sx = h*sin(r); 
               float sy = h*cos(r);
               float sz = angle*h;
-
-              if (millis()%10000 > 5000) {
+               boolean spheremode = millis()%10000 > 5000;
+              if (spheremode) {
                 int dupes = 2+ceil(millis()*.002%5)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
                   color qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0);
@@ -156,7 +156,7 @@ class SphereBars extends Effect {
       pg.endDraw();
     }    
 
-    for(int i = histSize-1; i >= 0; i--){
+    for(int i = /*histSize-1*/0; i >= 0; i--){
       image(layers[i], 0, 0);
     }
     

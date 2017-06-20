@@ -1,5 +1,5 @@
 //global variables
-String gradientMode = "none";
+String gradientMode = "gradient";
 boolean spotlightBars = false;
 boolean ringWave = false;
 boolean postEffect = false;

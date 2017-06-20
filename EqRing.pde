@@ -38,16 +38,13 @@ public class EqRing extends Effect {
 
     stroke(current);
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
     if (spotlightBars) {
-      //spotlightBars(_x, _y, i_rad, s);
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     } else {
-      //spBars(_x, _y, i_rad, s);
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
-      //bars(_x, _y, i_rad, s);
     }
 
+    ring(_x, _y, nbars, i_rad, o_rot, false);
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
@@ -146,7 +143,7 @@ public class EqRing extends Effect {
       s.curveVertex(width, 0);
       s.endShape();
       if (maxWaveH > 5) {
-        if (maxWaveH > 10) {
+        if (maxWaveH > 15) {
             shape(s, 0, 5*sin(millis()*.02));
         } else {
           shape(s, 0, 0);
