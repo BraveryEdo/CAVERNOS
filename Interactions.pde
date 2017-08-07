@@ -2,6 +2,7 @@
 String gradientMode = "gradient";
 boolean spotlightBars = false;
 boolean ringWave = false;
+boolean ringDisplay = true;
 boolean postEffect = false;
 boolean menu = false;
 String specDispMode = "default";
@@ -111,6 +112,13 @@ void keyPressed() {
       println("ReactionDiffusion postEffect enabled");
     }
     postEffect = !postEffect;
+  }  else if (key == '5') {
+    if (ringDisplay) {
+      println("ReactionDiffusion postEffect disabled");
+    } else {
+      println("ReactionDiffusion postEffect enabled");
+    }
+    ringDisplay = !ringDisplay;
   } else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);

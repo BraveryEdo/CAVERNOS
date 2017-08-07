@@ -125,7 +125,8 @@ class SphereBars extends Effect {
               float sz = angle*h;
                boolean spheremode = millis()%10000 > 5000;
               if (spheremode) {
-                int dupes = 2+ceil(millis()*.002%5)*2;
+                //dupes determines the number of copies of rings that will appear when active/
+                int dupes = 2+ceil(millis()*.002%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
                   color qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0);
                   pg.fill(qs);
@@ -141,7 +142,8 @@ class SphereBars extends Effect {
               }
               color q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
               pg.fill(q);
-              pg.stroke(q);
+              //pg.stroke(q);
+              pg.noStroke();
               pg.ellipse(sx, sy, sz, sz);
             }
             j+= bar_height*(.6 + .1515*sin(millis()*.002));

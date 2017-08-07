@@ -44,47 +44,49 @@ public class EqRing extends Effect {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
+    if (ringDisplay) {
+      ring(_x, _y, nbars, i_rad, o_rot, false);
+    }
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
     } 
 
+    if (ringDisplay) {
+      color lerp1 = lerpColor(current, lastPicked, 0.33);
 
-    color lerp1 = lerpColor(current, lastPicked, 0.33);
-
-    noFill();
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(s));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
+      noFill();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(s));
+      stroke(lerp1);
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
 
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(-(s)));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(-(s)));
+      stroke(lerp1);
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
 
-    color lerp2 = lerpColor(current, lastPicked, 0.66);
+      color lerp2 = lerpColor(current, lastPicked, 0.66);
 
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(s));
-    stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(s));
+      stroke(lerp2);
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(-(s)));
-    //stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
-
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(-(s)));
+      //stroke(lerp2);
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
+    }
     last_rad = o_rad;
     lastPicked = lerpColor(current, lastPicked, .8);
   }
@@ -144,7 +146,7 @@ public class EqRing extends Effect {
       s.endShape();
       if (maxWaveH > 5) {
         if (maxWaveH > 15) {
-            shape(s, 0, 5*sin(millis()*.02));
+          shape(s, 0, 5*sin(millis()*.02));
         } else {
           shape(s, 0, 0);
         }
