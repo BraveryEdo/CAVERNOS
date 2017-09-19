@@ -3,7 +3,7 @@ class ReactionDiffusion {
   Float[] r2, g2, b2, a2;
   Float[][][] hist;
   Float[][][] convolutions;
-  Float scale = (1.0/1.0);
+  Float scale = (1.0/2.0);
   int lastLogicUpdate;
   float w, h;
 

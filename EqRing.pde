@@ -54,12 +54,17 @@ public class EqRing extends Effect {
 
     if (ringDisplay) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);
-
-      noFill();
+      float coinflip = (millis()*1.0/o_rad)%1.0;
+      if (coinflip<0.5) {
+        noFill();
+        stroke(lerp1, o_rad/3);
+      } else {
+        fill(lerp1, o_rad/3);
+        noStroke();
+      }
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(s));
-      stroke(lerp1);
       ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
@@ -67,7 +72,6 @@ public class EqRing extends Effect {
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(-(s)));
-      stroke(lerp1);
       ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
 
@@ -75,15 +79,20 @@ public class EqRing extends Effect {
 
       pushMatrix();
       translate(_x, _y, 0);
-      rotateY(sin(s));
-      stroke(lerp2);
+      rotateY(sin(s)); 
+      if (coinflip<0.5) {
+        noFill();
+        stroke(lerp2, o_rad/3);
+      } else {
+        fill(lerp2, o_rad/3);
+        noStroke();
+      }
       ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
       pushMatrix();
       translate(_x, _y, 0);
       rotateY(sin(-(s)));
-      //stroke(lerp2);
       ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
     }
