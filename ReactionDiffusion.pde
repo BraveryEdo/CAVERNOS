@@ -41,6 +41,7 @@ class ReactionDiffusion {
     b2 = new Float[pl];
     a2 = new Float[pl];
     hist = new Float[4][histSize][pl];
+    updatePixels();
   }
 
   Thread logicThread = new Thread(new Runnable() {
