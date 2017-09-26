@@ -1,30 +1,11 @@
-class ReactionDiffusion {
-  Float[] r, g, b, a;
-  Float[] r2, g2, b2, a2;
+class colorDiffusion {
+  Float[] r, g, b;
+  Float[] r2, g2, b2;
   Float[][][] hist;
-  Float[][][] convolutions;
-  Float scale = (1.0/2.0);
   int lastLogicUpdate;
   float w, h;
 
-  ReactionDiffusion() {
-    convolutions = new Float[][][]{
-      //red
-      {{0.0, 2.0, 1.0}, 
-        {0.0, 4.0, 2.0}, 
-      {0.0, 2.0, 1.0}}, 
-      //green
-      {{0.5, 2.0, 0.5}, 
-        {1.0, 4.0, 1.0}, 
-      {2.0, 2.2, 2.0}}, 
-      //blue
-      {{2.0, 2.0, 0.0}, 
-        {2.0, 4.0, 0.0}, 
-      {2.0, 2.0, 0.0}}, 
-      //alpha
-      {{0.0, -1.0, 0.0}, 
-        {-1.0, 5.0, -1.0}, 
-      {0.0, -1.0, 0.0}}};
+  colorDiffusion() {
     lastLogicUpdate = millis();
     init();
   }
@@ -36,11 +17,9 @@ class ReactionDiffusion {
     r = new Float[pl];
     g = new Float[pl];
     b = new Float[pl];
-    a = new Float[pl];
     r2 = new Float[pl];
     g2 = new Float[pl];
     b2 = new Float[pl];
-    a2 = new Float[pl];
     hist = new Float[4][histSize][pl];
     updatePixels();
   }
@@ -61,10 +40,9 @@ class ReactionDiffusion {
             r[i] = red(c);
             g[i] = green(c);
             b[i] = blue(c);
-            a[i] = alpha(c);
           }
 
-          convolve();
+          colorShift();
           shiftHist();
           combine();
 
@@ -116,46 +94,30 @@ class ReactionDiffusion {
     }
   }
 
-  void convolve() {
+  void colorShift() {
 
-    Float[][] ins = {r, g, b, a};
-    Float[][] outs = {r2, g2, b2, a2};
+    Float[][] ins = {r, g, b};
+    Float[][] outs = {r2, g2, b2};
 
     for (int i = 0; i < ins.length; i++) {
       for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
           int pixelIndex = x+ width*y;
-
           Float colorIn = ins[i][pixelIndex];
 
-          ////apply each part of the convolutions matricies to each color part
-          //for (int conv = 0; conv < convolutions.length; conv++) {
-          //  Float[][] convArr = convolutions[conv];
-          //  for (int row = 0; row <  convArr.length; row++ ) {
-          //    Float[] convRow = convArr[row];
-          //    for (int col = 0; col < convRow.length; col++) {
-          //      Float f = convRow[col]*scale;
-          //      int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
-          //      int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
-          //      int outIndex = x_out+ width*y_out; 
-          //      outs[i][outIndex] = f*colorIn;
-          //    }
-          //  }
-          //}
+          int outIndex;
+          float shiftScale = 2.0;
+          boolean onScreen = true;
+          if(i == 0){ //red, shift right
+            outIndex = floor(x+shiftScale);
+            //check to see if the index is out of range, if so dont draw it.
+          } else if(i == 1){ //green stays centered
+            outIndex = pixelIndex;
+          } else { //blue shift left
+            
+          }
 
-          //apply each convolution to the relevant color part
-            Float[][] convArr = convolutions[min(convolutions.length-1,i)];
-            for (int row = 0; row <  convArr.length; row++ ) {
-              Float[] convRow = convArr[row];
-              for (int col = 0; col < convRow.length; col++) {
-                Float f = convRow[col]*scale;
-                int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
-                int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
-                int outIndex = x_out+ width*y_out; 
-                outs[i][outIndex] = f*colorIn;
-              }
-            }
-          
+          outs[i][outIndex] = colorIn;
         }
       }
     }

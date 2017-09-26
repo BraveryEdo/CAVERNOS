@@ -5,7 +5,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  ReactionDiffusion rf;
+  colorDiffusion rf;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -110,7 +110,7 @@ public class AudioProcessor {
     bands[4] = high;
     bands[5] = all;
 
-    rf = new ReactionDiffusion();
+    rf = new colorDiffusion();
     rf.logicThread.start();
 
     logicThread.start();
