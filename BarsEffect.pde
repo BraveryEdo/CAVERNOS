@@ -14,7 +14,7 @@ class BarsEffect extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    pg = createGraphics(width,height);
+    pg = createGraphics(width, height, P3D);
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
@@ -23,6 +23,7 @@ class BarsEffect extends Effect {
     float rot = ts;
 
     float s = (i_rad*PI/nbars)*.8;
+    pg.beginDraw();
     pg.rectMode(CENTER);
 
     pg.pushMatrix();
@@ -48,6 +49,7 @@ class BarsEffect extends Effect {
       a+= angle;
     }
     pg.popMatrix();
-    image(pg,0,0);
+    pg.endDraw();
+    image(pg, 0, 0);
   }
 }

@@ -8,22 +8,23 @@ class ReactionDiffusion {
   float w, h;
 
   ReactionDiffusion() {
-    convolutions = new Float[][][]
-      {//{{{1.0, 2.0, 1.0}, 
-      //  {2.0, 4.0, 2.0}, 
-      //{1.0, 2.0, 1.0}}, 
-      //{{0.5, 2.0, 0.5}, 
-      //  {1.0, 4.0, 1.0}, 
-      //{2.0, 2.2, 2.0}}, 
-      //{{2.0, 2.0, 2.0}, 
-      //  {2.0, 4.0, 2.0}, 
-      //{2.0, 2.0, 2.0}}, 
-      //{{0.0, -1.0, 0.0}, 
-      //  {-1.0, 5.0, -1.0}, 
-      //{0.0, -1.0, 0.0}},
-{{0.0, 0.0, 1.0}, 
-        {0.0, 0.0, 1.0}, 
-      {0.0, 0.0, 1.0}}};
+    convolutions = new Float[][][]{
+      //red
+      {{0.0, 2.0, 1.0}, 
+        {0.0, 4.0, 2.0}, 
+      {0.0, 2.0, 1.0}}, 
+      //green
+      {{0.5, 2.0, 0.5}, 
+        {1.0, 4.0, 1.0}, 
+      {2.0, 2.2, 2.0}}, 
+      //blue
+      {{2.0, 2.0, 0.0}, 
+        {2.0, 4.0, 0.0}, 
+      {2.0, 2.0, 0.0}}, 
+      //alpha
+      {{0.0, -1.0, 0.0}, 
+        {-1.0, 5.0, -1.0}, 
+      {0.0, -1.0, 0.0}}};
     lastLogicUpdate = millis();
     init();
   }
@@ -98,6 +99,7 @@ class ReactionDiffusion {
       }
     }
     pixels = pixtemp;
+    clear();
   }
 
   void shiftHist() {
@@ -126,9 +128,23 @@ class ReactionDiffusion {
 
           Float colorIn = ins[i][pixelIndex];
 
-          //apply each part of the convolutions matricies to each color part
-          for (int conv = 0; conv < convolutions.length; conv++) {
-            Float[][] convArr = convolutions[conv];
+          ////apply each part of the convolutions matricies to each color part
+          //for (int conv = 0; conv < convolutions.length; conv++) {
+          //  Float[][] convArr = convolutions[conv];
+          //  for (int row = 0; row <  convArr.length; row++ ) {
+          //    Float[] convRow = convArr[row];
+          //    for (int col = 0; col < convRow.length; col++) {
+          //      Float f = convRow[col]*scale;
+          //      int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
+          //      int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
+          //      int outIndex = x_out+ width*y_out; 
+          //      outs[i][outIndex] = f*colorIn;
+          //    }
+          //  }
+          //}
+
+          //apply each convolution to the relevant color part
+            Float[][] convArr = convolutions[min(convolutions.length-1,i)];
             for (int row = 0; row <  convArr.length; row++ ) {
               Float[] convRow = convArr[row];
               for (int col = 0; col < convRow.length; col++) {
@@ -139,7 +155,7 @@ class ReactionDiffusion {
                 outs[i][outIndex] = f*colorIn;
               }
             }
-          }
+          
         }
       }
     }

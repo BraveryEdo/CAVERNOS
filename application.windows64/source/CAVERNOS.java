@@ -56,18 +56,17 @@ public void draw() {
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0f, height/2.0f);
-  } else if(menu){
-    
   } else {
     if (!postEffect) {
-        background(0);
+        background(0,0,0,0);
     }
     ap.display();
-    if (millis() < 5000) {
+    if (millis()-menu < 15000) {
       textAlign(CENTER);
       textSize(32);
-      fill(255-millis()/25);
-      text("Press CTRL to toggle menu...", width/2.0f, height/4.0f);
+      fill(255-(millis()-menu)/25);
+      text("Controls: 0,1,2,3,4,5,9, and w", width/2.0f, height/4.0f);
+      //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
 }
@@ -391,6 +390,55 @@ public class AudioProcessor {
   }
   );
 }
+public class BackgroundPattern extends Effect {
+  PGraphics pg;
+  BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
+    super("BackgroundPattern", type, size, offset, hzMult, h);
+  }
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    int hn = 10;
+    int hx = height/hn;
+    int wn = 5;
+    int wx = width/wn;
+    int q  = 1;
+    pg = createGraphics(width, height, P3D);
+    pg.beginDraw();
+    for (int i = -hx - frameCount% (2*hx); i < (hn + 1)*hx; i += hx) {
+      pg.noStroke();
+      pg.fill(i*222/width%255, -i*222/height%255, 77, random(100, 200));
+      pg.rect(0, i, width, hx);
+
+      pg.fill(random(255)*222/width%255, -random(255)*222/width%255, random(100, 200), random(10, 100));
+      for (int j = 0; j < wn; j++) {
+        pg.stroke(35);
+        float w2 = j * wx;
+
+        if (q % 2 == 0) {
+          pg.triangle(w2, i, w2, i + hx, w2 + wx, (2 * i + hx)/2);
+        } else {
+
+          pg.fill(w2*222/width%255, -w2*222/width%255, random(100, 200), random(10, 100));
+          pg.triangle(w2 + wx, i, w2 + wx, i + hx, w2, (2 * i + hx)/2);
+        }
+        q++;
+      }
+    }
+    pg.endDraw();
+    pushMatrix();
+    translate(0, 0, -5);
+    image(pg, 0, 0);
+    popMatrix();
+  }
+}
+
 public class Band {
 
   private String name;
@@ -574,7 +622,7 @@ class BarsEffect extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    pg = createGraphics(width,height);
+    pg = createGraphics(width, height, P3D);
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
@@ -583,6 +631,7 @@ class BarsEffect extends Effect {
     float rot = ts;
 
     float s = (i_rad*PI/nbars)*.8f;
+    pg.beginDraw();
     pg.rectMode(CENTER);
 
     pg.pushMatrix();
@@ -608,9 +657,11 @@ class BarsEffect extends Effect {
       a+= angle;
     }
     pg.popMatrix();
-    image(pg,0,0);
+    pg.endDraw();
+    image(pg, 0, 0);
   }
 }
+
 public class ColorPicker {
   //using A4 tuning of 432 hz using an equal tempered scale: http://www.phy.mtu.edu/~suits/notefreq432.html
   // frequency n = baseFreqeuency (A4 of 432hz) * a^n where a = 2^(1/12) and n equals the number of half steps from the fixed base note
@@ -876,7 +927,7 @@ abstract class Effect {
     //propogate to subEffects
     if (subEffects != null) {
       for (Effect se : subEffects) {
-        se.setOffset(s);
+        se.setSize(s);
       }
     }
   }
@@ -932,6 +983,7 @@ abstract class Effect {
       }
     }
   }
+  
 }
 public class EffectManager {
   private String effectName;
@@ -984,37 +1036,33 @@ public class EffectManager {
 
     hzMult = hz;
     offset = off;
-
+    
     switch(name) {
     case "all":
       e = new EqRing(size, offset, hzMult, name, histLen);
-      e.type=name;
+      e.type = name;
       break;
     //case "sub": 
     //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  e.type=name;
     //  break;
     //case "low": 
     //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  e.type=name;
     //  break;
     //case "mid": 
     //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  e.type=name;
     //  break;
     //case "upper": 
     //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  e.type=name;
     //  break;
     //case "high":
     //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  e.type=name;
     //  break;
     default:
       e = new DefaultVis(size, offset, hzMult, name, histLen);
-      e.type=name;
+      e.type = name;
       break;
     }
+    
 
     println("effectManager for '" + name + "' loaded");
     loading--;
@@ -1090,10 +1138,11 @@ public class EffectManager {
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[3];
-    subEffects[0] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[1] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects = new Effect[4];
+    subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
+    subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
+    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
+    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -1105,7 +1154,7 @@ public class EqRing extends Effect {
   float waveH = 100;
 
   public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-
+    subEffects[0].display(0,0,h,w,0,0,0);
     if (waveForm != "disabled") {
       //noCursor();
       waveForm(0, height/2.0f, waveH, 0, 0, 0);
@@ -1127,52 +1176,64 @@ public class EqRing extends Effect {
     stroke(current);
 
     if (spotlightBars) {
-      subEffects[1].display(_x, _y, h, w, 0, 0, 0);
-    } else {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
+    } else {
+      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
+    if (ringDisplay) {
+      noFill();
+      ring(_x, _y, nbars, i_rad, o_rot, false);
+    }
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
     } 
 
+    if (ringDisplay) {
+      int lerp1 = lerpColor(current, lastPicked, 0.33f);
+      float coinflip = (millis()*1.0f/o_rad)%1.0f;
+      if (coinflip<0.5f) {
+        noFill();
+        stroke(lerp1, o_rad/3);
+      } else {
+        fill(lerp1, o_rad/3);
+        noStroke();
+      }
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(s));
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
-    int lerp1 = lerpColor(current, lastPicked, 0.33f);
 
-    noFill();
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(s));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(-(s)));
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
 
+      int lerp2 = lerpColor(current, lastPicked, 0.66f);
 
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(-(s)));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(s)); 
+      if (coinflip<0.5f) {
+        noFill();
+        stroke(lerp2, o_rad/3);
+      } else {
+        fill(lerp2, o_rad/3);
+        noStroke();
+      }
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
-    int lerp2 = lerpColor(current, lastPicked, 0.66f);
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(s));
-    stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(-(s)));
-    //stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
-
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(-(s)));
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
+    }
     last_rad = o_rad;
     lastPicked = lerpColor(current, lastPicked, .8f);
   }
@@ -1232,7 +1293,7 @@ public class EqRing extends Effect {
       s.endShape();
       if (maxWaveH > 5) {
         if (maxWaveH > 15) {
-            shape(s, 0, 5*sin(millis()*.02f));
+          shape(s, 0, 5*sin(millis()*.02f));
         } else {
           shape(s, 0, 0);
         }
@@ -1392,8 +1453,9 @@ public class ExpandingVis extends Effect {
 String gradientMode = "gradient";
 boolean spotlightBars = false;
 boolean ringWave = false;
+boolean ringDisplay = true;
 boolean postEffect = false;
-boolean menu = false;
+float menu = millis();
 String specDispMode = "default";
 String[] waveTypes = {"additive", "multi", "disabled"};
 String waveForm = waveTypes[0];
@@ -1435,6 +1497,7 @@ public void keyPressed() {
         ringW+=step;
       }
     } else if (keyCode == CONTROL) {
+      menu = millis();
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
@@ -1501,6 +1564,13 @@ public void keyPressed() {
       println("ReactionDiffusion postEffect enabled");
     }
     postEffect = !postEffect;
+  }  else if (key == '5') {
+    if (ringDisplay) {
+      println("ReactionDiffusion postEffect disabled");
+    } else {
+      println("ReactionDiffusion postEffect enabled");
+    }
+    ringDisplay = !ringDisplay;
   } else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
@@ -1587,27 +1657,28 @@ class ReactionDiffusion {
   Float[] r2, g2, b2, a2;
   Float[][][] hist;
   Float[][][] convolutions;
-  Float scale = (1.0f/1.0f);
+  Float scale = (1.0f/2.0f);
   int lastLogicUpdate;
   float w, h;
 
   ReactionDiffusion() {
-    convolutions = new Float[][][]
-      {//{{{1.0, 2.0, 1.0}, 
-      //  {2.0, 4.0, 2.0}, 
-      //{1.0, 2.0, 1.0}}, 
-      //{{0.5, 2.0, 0.5}, 
-      //  {1.0, 4.0, 1.0}, 
-      //{2.0, 2.2, 2.0}}, 
-      //{{2.0, 2.0, 2.0}, 
-      //  {2.0, 4.0, 2.0}, 
-      //{2.0, 2.0, 2.0}}, 
-      //{{0.0, -1.0, 0.0}, 
-      //  {-1.0, 5.0, -1.0}, 
-      //{0.0, -1.0, 0.0}},
-{{0.0f, 0.0f, 1.0f}, 
-        {0.0f, 0.0f, 1.0f}, 
-      {0.0f, 0.0f, 1.0f}}};
+    convolutions = new Float[][][]{
+      //red
+      {{0.0f, 2.0f, 1.0f}, 
+        {0.0f, 4.0f, 2.0f}, 
+      {0.0f, 2.0f, 1.0f}}, 
+      //green
+      {{0.5f, 2.0f, 0.5f}, 
+        {1.0f, 4.0f, 1.0f}, 
+      {2.0f, 2.2f, 2.0f}}, 
+      //blue
+      {{2.0f, 2.0f, 0.0f}, 
+        {2.0f, 4.0f, 0.0f}, 
+      {2.0f, 2.0f, 0.0f}}, 
+      //alpha
+      {{0.0f, -1.0f, 0.0f}, 
+        {-1.0f, 5.0f, -1.0f}, 
+      {0.0f, -1.0f, 0.0f}}};
     lastLogicUpdate = millis();
     init();
   }
@@ -1625,6 +1696,7 @@ class ReactionDiffusion {
     b2 = new Float[pl];
     a2 = new Float[pl];
     hist = new Float[4][histSize][pl];
+    updatePixels();
   }
 
   Thread logicThread = new Thread(new Runnable() {
@@ -1681,6 +1753,7 @@ class ReactionDiffusion {
       }
     }
     pixels = pixtemp;
+    clear();
   }
 
   public void shiftHist() {
@@ -1709,9 +1782,23 @@ class ReactionDiffusion {
 
           Float colorIn = ins[i][pixelIndex];
 
-          //apply each part of the convolutions matricies to each color part
-          for (int conv = 0; conv < convolutions.length; conv++) {
-            Float[][] convArr = convolutions[conv];
+          ////apply each part of the convolutions matricies to each color part
+          //for (int conv = 0; conv < convolutions.length; conv++) {
+          //  Float[][] convArr = convolutions[conv];
+          //  for (int row = 0; row <  convArr.length; row++ ) {
+          //    Float[] convRow = convArr[row];
+          //    for (int col = 0; col < convRow.length; col++) {
+          //      Float f = convRow[col]*scale;
+          //      int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
+          //      int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
+          //      int outIndex = x_out+ width*y_out; 
+          //      outs[i][outIndex] = f*colorIn;
+          //    }
+          //  }
+          //}
+
+          //apply each convolution to the relevant color part
+            Float[][] convArr = convolutions[min(convolutions.length-1,i)];
             for (int row = 0; row <  convArr.length; row++ ) {
               Float[] convRow = convArr[row];
               for (int col = 0; col < convRow.length; col++) {
@@ -1722,7 +1809,7 @@ class ReactionDiffusion {
                 outs[i][outIndex] = f*colorIn;
               }
             }
-          }
+          
         }
       }
     }
@@ -1855,7 +1942,8 @@ class SphereBars extends Effect {
               float sz = angle*h;
                boolean spheremode = millis()%10000 > 5000;
               if (spheremode) {
-                int dupes = 2+ceil(millis()*.002f%5)*2;
+                //dupes determines the number of copies of rings that will appear when active/
+                int dupes = 2+ceil(millis()*.002f%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
                   int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
                   pg.fill(qs);
@@ -1871,7 +1959,8 @@ class SphereBars extends Effect {
               }
               int q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
               pg.fill(q);
-              pg.stroke(q);
+              //pg.stroke(q);
+              pg.noStroke();
               pg.ellipse(sx, sy, sz, sz);
             }
             j+= bar_height*(.6f + .1515f*sin(millis()*.002f));

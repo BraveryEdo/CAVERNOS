@@ -35,18 +35,17 @@ void draw() {
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0, height/2.0);
-  } else if(menu){
-    
   } else {
     if (!postEffect) {
-        background(0);
+        background(0,0,0,0);
     }
     ap.display();
-    if (millis() < 5000) {
+    if (millis()-menu < 15000) {
       textAlign(CENTER);
       textSize(32);
-      fill(255-millis()/25);
-      text("Press CTRL to toggle menu...", width/2.0, height/4.0);
+      fill(255-(millis()-menu)/25);
+      text("Controls: 0,1,2,3,4,5,9, and w", width/2.0, height/4.0);
+      //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
 }

@@ -2,10 +2,11 @@
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[3];
-    subEffects[0] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[1] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects = new Effect[4];
+    subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
+    subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
+    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
+    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -17,7 +18,7 @@ public class EqRing extends Effect {
   float waveH = 100;
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-
+    subEffects[0].display(0,0,h,w,0,0,0);
     if (waveForm != "disabled") {
       //noCursor();
       waveForm(0, height/2.0, waveH, 0, 0, 0);
@@ -39,52 +40,64 @@ public class EqRing extends Effect {
     stroke(current);
 
     if (spotlightBars) {
-      subEffects[1].display(_x, _y, h, w, 0, 0, 0);
-    } else {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
+    } else {
+      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    ring(_x, _y, nbars, i_rad, o_rot, false);
+    if (ringDisplay) {
+      noFill();
+      ring(_x, _y, nbars, i_rad, o_rot, false);
+    }
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
     } 
 
+    if (ringDisplay) {
+      color lerp1 = lerpColor(current, lastPicked, 0.33);
+      float coinflip = (millis()*1.0/o_rad)%1.0;
+      if (coinflip<0.5) {
+        noFill();
+        stroke(lerp1, o_rad/3);
+      } else {
+        fill(lerp1, o_rad/3);
+        noStroke();
+      }
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(s));
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
-    color lerp1 = lerpColor(current, lastPicked, 0.33);
 
-    noFill();
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(s));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateX(sin(-(s)));
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
 
+      color lerp2 = lerpColor(current, lastPicked, 0.66);
 
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateX(sin(-(s)));
-    stroke(lerp1);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(s)); 
+      if (coinflip<0.5) {
+        noFill();
+        stroke(lerp2, o_rad/3);
+      } else {
+        fill(lerp2, o_rad/3);
+        noStroke();
+      }
+      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      popMatrix();
 
-    color lerp2 = lerpColor(current, lastPicked, 0.66);
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(s));
-    stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
-    popMatrix();
-
-    pushMatrix();
-    translate(_x, _y, 0);
-    rotateY(sin(-(s)));
-    //stroke(lerp2);
-    ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
-    popMatrix();
-
+      pushMatrix();
+      translate(_x, _y, 0);
+      rotateY(sin(-(s)));
+      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      popMatrix();
+    }
     last_rad = o_rad;
     lastPicked = lerpColor(current, lastPicked, .8);
   }
@@ -144,7 +157,7 @@ public class EqRing extends Effect {
       s.endShape();
       if (maxWaveH > 5) {
         if (maxWaveH > 15) {
-            shape(s, 0, 5*sin(millis()*.02));
+          shape(s, 0, 5*sin(millis()*.02));
         } else {
           shape(s, 0, 0);
         }

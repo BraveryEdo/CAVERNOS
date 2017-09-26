@@ -4,7 +4,7 @@ boolean spotlightBars = false;
 boolean ringWave = false;
 boolean ringDisplay = true;
 boolean postEffect = false;
-boolean menu = false;
+float menu = millis();
 String specDispMode = "default";
 String[] waveTypes = {"additive", "multi", "disabled"};
 String waveForm = waveTypes[0];
@@ -46,6 +46,7 @@ void keyPressed() {
         ringW+=step;
       }
     } else if (keyCode == CONTROL) {
+      menu = millis();
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);

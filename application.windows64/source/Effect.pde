@@ -77,7 +77,7 @@ abstract class Effect {
     //propogate to subEffects
     if (subEffects != null) {
       for (Effect se : subEffects) {
-        se.setOffset(s);
+        se.setSize(s);
       }
     }
   }
@@ -133,4 +133,5 @@ abstract class Effect {
       }
     }
   }
+  
 }
