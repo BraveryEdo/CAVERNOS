@@ -19,7 +19,6 @@ void setup() {
   loading++;
   size(1000, 700, P3D);
   //fullScreen(P3D);
-  background(0);
   frameRate(240);
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
@@ -30,15 +29,14 @@ void setup() {
 
 
 void draw() {
+  clear();
   if (loading != 0) {
     println("loading counter: ", loading);
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0, height/2.0);
   } else {
-    if (!postEffect) {
-        background(0,0,0,0);
-    }
+
     ap.display();
     if (millis()-menu < 15000) {
       textAlign(CENTER);
