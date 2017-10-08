@@ -14,7 +14,6 @@ int channels = 3;
 int loading = 0;
 int logicRate = 1000;
 
-
 void setup() {
   loading++;
   size(1000, 700, P3D);

@@ -56,9 +56,9 @@ public class BackgroundPattern extends Effect {
       }
     }
     pg.endDraw();
-    pushMatrix();
-    translate(0, 0, -5);
+    //pushMatrix();
+    //translate(0, 0, -5);
     image(pg, 0, 0);
-    popMatrix();
+      //popMatrix();
   }
 }

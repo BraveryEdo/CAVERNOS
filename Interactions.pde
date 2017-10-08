@@ -108,9 +108,9 @@ void keyPressed() {
     }
   } else if (key == '4') {
     if (postEffect) {
-      println("ReactionDiffusion postEffect disabled");
+      println("ColorDiffusion postEffect disabled");
     } else {
-      println("ReactionDiffusion postEffect enabled");
+      println("ColorDiffusion postEffect enabled");
     }
     postEffect = !postEffect;
   }  else if (key == '5') {

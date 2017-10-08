@@ -5,7 +5,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  colorDiffusion rf;
+  ColorDiffusion cDiff;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -109,9 +109,8 @@ public class AudioProcessor {
     bands[3] = upper;
     bands[4] = high;
     bands[5] = all;
-
-    rf = new colorDiffusion();
-    rf.logicThread.start();
+    
+    cDiff = new ColorDiffusion();
 
     logicThread.start();
     println("audioProcessor started");
@@ -119,8 +118,6 @@ public class AudioProcessor {
   }
 
   void display() {
-    
-    
     int c = 0;
     for (Band b : bands) {
 
@@ -139,6 +136,9 @@ public class AudioProcessor {
       }
       c++;
     }
+    
+    cDiff.screenScrape = get();
+    cDiff.display();
   }
 
 
