@@ -50,14 +50,16 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
-          bRad = radius;
-          break;
-        case 1:
           bRad = (max(bri, 100)/240)*radius;
           break;
+        case 1:
+          bRad = radius;
+          break;
         case 2:
-        case 3:
           bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
+          break;
+        case 3:
+          bRad = radius;
           break;
         default:
           bRad = radius;

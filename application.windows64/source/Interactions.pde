@@ -107,7 +107,7 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%3;
+    BGPattern = (BGPattern + 1)%4;
     println("BGPattern switched to: " + BGPattern);
     //if (postEffect) {
     //  println("ColorDiffusion postEffect disabled");

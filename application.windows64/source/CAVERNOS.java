@@ -440,14 +440,16 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
-          bRad = radius;
-          break;
-        case 1:
           bRad = (max(bri, 100)/240)*radius;
           break;
+        case 1:
+          bRad = radius;
+          break;
         case 2:
-        case 3:
           bRad = (255/max(bri, 100))*radius/2.0f+radius/2.0f;
+          break;
+        case 3:
+          bRad = radius;
           break;
         default:
           bRad = radius;
@@ -1485,8 +1487,10 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0f-_r);
     }
-    if (ori) {
-      float top = spec[1][maxIndex]*5/25;
+    
+    float top = spec[1][maxIndex]*5/50;
+    if (ori && top > 2) {
+      
       for (int i  = 0; i < top ; i++) {
 
         strokeWeight((top-i) * 3);
@@ -1515,7 +1519,6 @@ public class EqRing extends Effect {
     endShape(CLOSE);
   }
 }
-
 public class ExpandingVis extends Effect {
 
   ExpandingVis(int size, int offset, float hzMult, String type, int h) {
@@ -1714,7 +1717,7 @@ public void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%3;
+    BGPattern = (BGPattern + 1)%4;
     println("BGPattern switched to: " + BGPattern);
     //if (postEffect) {
     //  println("ColorDiffusion postEffect disabled");

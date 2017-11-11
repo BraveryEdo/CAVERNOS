@@ -193,8 +193,10 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0-_r);
     }
-    if (ori) {
-      float top = spec[1][maxIndex]*5/25;
+    
+    float top = spec[1][maxIndex]*5/50;
+    if (ori && top > 2) {
+      
       for (int i  = 0; i < top ; i++) {
 
         strokeWeight((top-i) * 3);
