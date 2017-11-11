@@ -13,11 +13,12 @@ int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
 int logicRate = 1000;
+int BGPattern = 0;
 
 void setup() {
   loading++;
-  size(1000, 700, P3D);
-  //fullScreen(P3D);
+  //size(1000, 700, P3D);
+  fullScreen(P3D);
   frameRate(240);
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!

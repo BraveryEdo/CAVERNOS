@@ -29,7 +29,6 @@ class ColorDiffusion {
   }
 
   void display() {
-    println("display");
     if (width != w || height != h) {
       println("colorDiffusion needs to resize");
       init();

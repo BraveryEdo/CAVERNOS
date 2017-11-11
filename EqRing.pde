@@ -1,4 +1,3 @@
-
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
@@ -18,7 +17,7 @@ public class EqRing extends Effect {
   float waveH = 100;
 
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-    subEffects[0].display(0,0,h,w,0,0,0);
+    subEffects[0].display(0, 0, h, w, 0, 0, 0);
     if (waveForm != "disabled") {
       //noCursor();
       waveForm(0, height/2.0, waveH, 0, 0, 0);
@@ -47,7 +46,7 @@ public class EqRing extends Effect {
 
     if (ringDisplay) {
       noFill();
-      ring(_x, _y, nbars, i_rad, o_rot, false);
+      triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
@@ -56,25 +55,19 @@ public class EqRing extends Effect {
 
     if (ringDisplay) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);
-      float coinflip = (millis()*1.0/o_rad)%1.0;
-      if (coinflip<0.5) {
-        noFill();
-        stroke(lerp1, o_rad/3);
-      } else {
-        fill(lerp1, o_rad/3);
-        noStroke();
-      }
+      noFill();
+      stroke(lerp1, o_rad/3);
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(s));
-      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
 
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(-(s)));
-      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
 
       color lerp2 = lerpColor(current, lastPicked, 0.66);
@@ -82,20 +75,16 @@ public class EqRing extends Effect {
       pushMatrix();
       translate(_x, _y, 0);
       rotateY(sin(s)); 
-      if (coinflip<0.5) {
-        noFill();
-        stroke(lerp2, o_rad/3);
-      } else {
-        fill(lerp2, o_rad/3);
-        noStroke();
-      }
-      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      noFill();
+      stroke(lerp2, o_rad/3);
+
+      triRing(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
       pushMatrix();
       translate(_x, _y, 0);
       rotateY(sin(-(s)));
-      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
     }
     last_rad = o_rad;
@@ -169,7 +158,7 @@ public class EqRing extends Effect {
 
 
   //creates a ring of outward facing triangles
-  void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
+  void triRing(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
     // _x, _y = center point
     // _n = number of triangles in ring
     // _r = radius of ring (measured to tri center point)
@@ -204,8 +193,18 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0-_r);
     }
+    if (ori) {
+      float top = spec[1][maxIndex]*5/25;
+      for (int i  = 0; i < top ; i++) {
 
-    polygon(0, 0, _s, 3);
+        strokeWeight((top-i) * 3);
+
+        polygon(i*10, 0, _s, 3);
+      }
+    } else {
+      strokeWeight(2);
+      polygon(0, 0, _s, 3);
+    }
     popMatrix();
   }
 

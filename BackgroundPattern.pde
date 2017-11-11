@@ -1,9 +1,9 @@
 public class BackgroundPattern extends Effect {
   PGraphics pg;
-  int pattern;
+
+
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
-    pattern = 0;
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -14,16 +14,68 @@ public class BackgroundPattern extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    switch(pattern){
-      case 0:
-        diamondPattern();
-        break;
-      case 1:
-        break;    
-      default:
+    switch(BGPattern) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+      perlinGridPattern();
+      break;
+    default:
       diamondPattern();
-        break;
+      break;
     }
+  }
+
+  void perlinGridPattern() {
+    pg = createGraphics(width, height, P3D);
+    pg.beginDraw();
+    pg.clear();
+    pg.noStroke();
+    pg.colorMode(HSB);
+    pg.sphereDetail(32);
+
+    float noisescale = 0.0025;    
+    float gridSize = 25;
+    for (int y = 0; y < height/2.0; y+=gridSize) {
+      for (int x = 0; x < width/2.0; x+=gridSize) {
+        float perl = (((sin(millis()*.002)+PI*abs(cos(millis()*.00002)*5))*noise(x*noisescale, y*noisescale, millis()*0.0002)%PI)-(PI/2))*160;
+
+        float hue = (millis()*.02 + abs(perl)) %255;
+        float sat = 50*cos(millis()*.02)+100*sin(millis()*.002);
+        float bri = 240-abs(perl)+10*sin(millis()*.00002); 
+
+        float radius = gridSize-2;
+
+        float bRad = 0;
+        switch(BGPattern) {
+        case 0:
+          bRad = radius;
+          break;
+        case 1:
+          bRad = (max(bri, 100)/240)*radius;
+          break;
+        case 2:
+        case 3:
+          bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
+          break;
+        default:
+          bRad = radius;
+          break;
+        }
+
+        pg.fill(hue, sat, bri);
+        pg.noStroke();
+        pg.ellipse(x+radius/2.0, y+radius/2.0, bRad, bRad);
+        pg.ellipse(width-(x+radius/2.0), y+radius/2.0, bRad, bRad);
+        pg.ellipse(x+radius/2.0, height-(y+radius/2.0), bRad, bRad);
+        pg.ellipse(width-(x+radius/2.0), height-(y+radius/2.0), bRad, bRad);
+      }
+    }
+
+
+    pg.endDraw();
+    image(pg, 0, 0);
   }
 
   void diamondPattern() {
@@ -33,6 +85,7 @@ public class BackgroundPattern extends Effect {
     int wx = width/horizontalReps;
     int q  = 0;
     pg = createGraphics(width, height, P3D);
+    pg.colorMode(RGB);
     pg.beginDraw();
     for (int i = ceil(-hx - (millis()*.2) % (2*hx)); i < (verticalReps + 1)*hx; i += hx) {
       pg.noStroke();
@@ -59,6 +112,6 @@ public class BackgroundPattern extends Effect {
     //pushMatrix();
     //translate(0, 0, -5);
     image(pg, 0, 0);
-      //popMatrix();
+    //popMatrix();
   }
 }

@@ -107,12 +107,14 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    if (postEffect) {
-      println("ColorDiffusion postEffect disabled");
-    } else {
-      println("ColorDiffusion postEffect enabled");
-    }
-    postEffect = !postEffect;
+    BGPattern = (BGPattern + 1)%3;
+    println("BGPattern switched to: " + BGPattern);
+    //if (postEffect) {
+    //  println("ColorDiffusion postEffect disabled");
+    //} else {
+    //  println("ColorDiffusion postEffect enabled");
+    //}
+    //postEffect = !postEffect;
   }  else if (key == '5') {
     if (ringDisplay) {
       println("ReactionDiffusion postEffect disabled");
