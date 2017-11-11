@@ -115,14 +115,21 @@ void keyPressed() {
     //  println("ColorDiffusion postEffect enabled");
     //}
     //postEffect = !postEffect;
-  }  else if (key == '5') {
+  } else if (key == '5') {
     if (ringDisplay) {
       println("ReactionDiffusion postEffect disabled");
     } else {
       println("ReactionDiffusion postEffect enabled");
     }
     ringDisplay = !ringDisplay;
-  } else if (key == 'w') {
+  } else if (key == '6') {
+    if (shpereBarsDupelicateMode) {
+      println("shpereBarsDupelicateMode disabled");
+    } else {
+      println("shpereBarsDupelicateMode enabled");
+    }
+    shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
+} else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
   } else if (key == 'r') {

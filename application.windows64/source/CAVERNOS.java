@@ -35,6 +35,7 @@ int channels = 3;
 int loading = 0;
 int logicRate = 1000;
 int BGPattern = 0;
+boolean shpereBarsDupelicateMode = false;
 
 public void setup() {
   loading++;
@@ -63,7 +64,7 @@ public void draw() {
       textAlign(CENTER);
       textSize(32);
       fill(255-(millis()-menu)/25);
-      text("Controls: 0,1,2,3,4,5,9, and w", width/2.0f, height/4.0f);
+      text("Controls: 0,1,2,3,4,5, 6, 9, and w", width/2.0f, height/4.0f);
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
@@ -1725,14 +1726,21 @@ public void keyPressed() {
     //  println("ColorDiffusion postEffect enabled");
     //}
     //postEffect = !postEffect;
-  }  else if (key == '5') {
+  } else if (key == '5') {
     if (ringDisplay) {
       println("ReactionDiffusion postEffect disabled");
     } else {
       println("ReactionDiffusion postEffect enabled");
     }
     ringDisplay = !ringDisplay;
-  } else if (key == 'w') {
+  } else if (key == '6') {
+    if (shpereBarsDupelicateMode) {
+      println("shpereBarsDupelicateMode disabled");
+    } else {
+      println("shpereBarsDupelicateMode enabled");
+    }
+    shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
+} else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
   } else if (key == 'r') {
@@ -1938,8 +1946,7 @@ class SphereBars extends Effect {
               float sx = h*sin(r); 
               float sy = h*cos(r);
               float sz = angle*h;
-               boolean spheremode = millis()%10000 > 5000;
-              if (spheremode) {
+              if (shpereBarsDupelicateMode) {
                 //dupes determines the number of copies of rings that will appear when active/
                 int dupes = 2+ceil(millis()*.002f%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 

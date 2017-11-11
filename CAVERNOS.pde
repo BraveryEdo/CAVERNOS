@@ -14,6 +14,7 @@ int channels = 3;
 int loading = 0;
 int logicRate = 1000;
 int BGPattern = 0;
+boolean shpereBarsDupelicateMode = false;
 
 void setup() {
   loading++;
@@ -42,7 +43,7 @@ void draw() {
       textAlign(CENTER);
       textSize(32);
       fill(255-(millis()-menu)/25);
-      text("Controls: 0,1,2,3,4,5,9, and w", width/2.0, height/4.0);
+      text("Controls: 0,1,2,3,4,5, 6, 9, and w", width/2.0, height/4.0);
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }

@@ -123,8 +123,7 @@ class SphereBars extends Effect {
               float sx = h*sin(r); 
               float sy = h*cos(r);
               float sz = angle*h;
-               boolean spheremode = millis()%10000 > 5000;
-              if (spheremode) {
+              if (shpereBarsDupelicateMode) {
                 //dupes determines the number of copies of rings that will appear when active/
                 int dupes = 2+ceil(millis()*.002%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
