@@ -7,9 +7,10 @@ public class ColorPicker {
 
   //color picking based off the wavelength that a certain color is in light based on a base 432hz tuning, example drawn from: http://www.roelhollander.eu/en/tuning-frequency/sound-light-colour/, consider this for later: http://www.fourmilab.ch/documents/specrend/
   //                    C0,       C0#,     D0,      D0#,     E0,      F0,     F0#,      G0,       G0#,     A0,      A0#,     B0    
-  color[] colorChart = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
-  
-  
+  //color[] physicsTheme = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
+//color[] darkColorScheme = {#33A000, #4FB77D, #697479, #182367, #3B1267, #2C0758, #3F0358, #580F01, #4D0A0A, #E32D00, #A57C00, #597401};
+//color[] neonTheme = {#FFFF00,#F2EA02,#FF0000,#FF3300,#00FF00,#00FF66,#00FFFF,#0062FF,#FF00FF,#FF0099,#9D00FF, #6E0DD0};
+  color[] colorChart = {#FFFF00,#F2EA02,#FF0000,#FF3300,#00FF00,#00FF66,#00FFFF,#0062FF,#FF00FF,#FF0099,#9D00FF, #6E0DD0};
   int histDepth = histSize;
   int audioRanges = 6; //all, sub, low, mid, upper, high
   color[][] colors;

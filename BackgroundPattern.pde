@@ -42,7 +42,7 @@ public class BackgroundPattern extends Effect {
         float perl = (((sin(millis()*.002)+PI*abs(cos(millis()*.00002)*5))*noise(x*noisescale, y*noisescale, millis()*0.0002)%PI)-(PI/2))*160;
 
         float hue = (millis()*.02 + abs(perl)) %255;
-        float sat = 50*cos(millis()*.02)+100*sin(millis()*.002);
+        float sat = 50*abs(cos(millis()*.02))+100*sin(millis()*.002)+16;
         float bri = 240-abs(perl)+10*sin(millis()*.00002); 
 
         float radius = gridSize-2;

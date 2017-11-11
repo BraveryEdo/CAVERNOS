@@ -5,7 +5,7 @@ boolean ringWave = false;
 boolean ringDisplay = true;
 boolean postEffect = false;
 float menu = millis();
-String specDispMode = "default";
+String specDispMode = "mirrored";
 String[] waveTypes = {"additive", "multi", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
@@ -107,12 +107,14 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    if (postEffect) {
-      println("ReactionDiffusion postEffect disabled");
-    } else {
-      println("ReactionDiffusion postEffect enabled");
-    }
-    postEffect = !postEffect;
+    BGPattern = (BGPattern + 1)%3;
+    println("BGPattern switched to: " + BGPattern);
+    //if (postEffect) {
+    //  println("ColorDiffusion postEffect disabled");
+    //} else {
+    //  println("ColorDiffusion postEffect enabled");
+    //}
+    //postEffect = !postEffect;
   }  else if (key == '5') {
     if (ringDisplay) {
       println("ReactionDiffusion postEffect disabled");

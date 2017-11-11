@@ -34,13 +34,12 @@ int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
 int logicRate = 1000;
-
+int BGPattern = 0;
 
 public void setup() {
   loading++;
+  //size(1000, 700, P3D);
   
-  //fullScreen(P3D);
-  background(0);
   frameRate(240);
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
@@ -51,15 +50,14 @@ public void setup() {
 
 
 public void draw() {
+  clear();
   if (loading != 0) {
     println("loading counter: ", loading);
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0f, height/2.0f);
   } else {
-    if (!postEffect) {
-        background(0,0,0,0);
-    }
+
     ap.display();
     if (millis()-menu < 15000) {
       textAlign(CENTER);
@@ -77,7 +75,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  ReactionDiffusion rf;
+  ColorDiffusion cDiff;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -181,9 +179,8 @@ public class AudioProcessor {
     bands[3] = upper;
     bands[4] = high;
     bands[5] = all;
-
-    rf = new ReactionDiffusion();
-    rf.logicThread.start();
+    
+    cDiff = new ColorDiffusion();
 
     logicThread.start();
     println("audioProcessor started");
@@ -191,8 +188,6 @@ public class AudioProcessor {
   }
 
   public void display() {
-    
-    
     int c = 0;
     for (Band b : bands) {
 
@@ -211,6 +206,9 @@ public class AudioProcessor {
       }
       c++;
     }
+    
+    cDiff.screenScrape = get();
+    cDiff.display();
   }
 
 
@@ -392,6 +390,8 @@ public class AudioProcessor {
 }
 public class BackgroundPattern extends Effect {
   PGraphics pg;
+
+
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
   }
@@ -404,42 +404,108 @@ public class BackgroundPattern extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    int hn = 10;
-    int hx = height/hn;
-    int wn = 5;
-    int wx = width/wn;
-    int q  = 1;
+    switch(BGPattern) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+      perlinGridPattern();
+      break;
+    default:
+      diamondPattern();
+      break;
+    }
+  }
+
+  public void perlinGridPattern() {
     pg = createGraphics(width, height, P3D);
     pg.beginDraw();
-    for (int i = -hx - frameCount% (2*hx); i < (hn + 1)*hx; i += hx) {
-      pg.noStroke();
-      pg.fill(i*222/width%255, -i*222/height%255, 77, random(100, 200));
-      pg.rect(0, i, width, hx);
+    pg.clear();
+    pg.noStroke();
+    pg.colorMode(HSB);
+    pg.sphereDetail(32);
 
-      pg.fill(random(255)*222/width%255, -random(255)*222/width%255, random(100, 200), random(10, 100));
-      for (int j = 0; j < wn; j++) {
-        pg.stroke(35);
+    float noisescale = 0.0025f;    
+    float gridSize = 25;
+    for (int y = 0; y < height/2.0f; y+=gridSize) {
+      for (int x = 0; x < width/2.0f; x+=gridSize) {
+        float perl = (((sin(millis()*.002f)+PI*abs(cos(millis()*.00002f)*5))*noise(x*noisescale, y*noisescale, millis()*0.0002f)%PI)-(PI/2))*160;
+
+        float hue = (millis()*.02f + abs(perl)) %255;
+        float sat = 50*abs(cos(millis()*.02f))+100*sin(millis()*.002f)+16;
+        float bri = 240-abs(perl)+10*sin(millis()*.00002f); 
+
+        float radius = gridSize-2;
+
+        float bRad = 0;
+        switch(BGPattern) {
+        case 0:
+          bRad = radius;
+          break;
+        case 1:
+          bRad = (max(bri, 100)/240)*radius;
+          break;
+        case 2:
+        case 3:
+          bRad = (255/max(bri, 100))*radius/2.0f+radius/2.0f;
+          break;
+        default:
+          bRad = radius;
+          break;
+        }
+
+        pg.fill(hue, sat, bri);
+        pg.noStroke();
+        pg.ellipse(x+radius/2.0f, y+radius/2.0f, bRad, bRad);
+        pg.ellipse(width-(x+radius/2.0f), y+radius/2.0f, bRad, bRad);
+        pg.ellipse(x+radius/2.0f, height-(y+radius/2.0f), bRad, bRad);
+        pg.ellipse(width-(x+radius/2.0f), height-(y+radius/2.0f), bRad, bRad);
+      }
+    }
+
+
+    pg.endDraw();
+    image(pg, 0, 0);
+  }
+
+  public void diamondPattern() {
+    int verticalReps = 10;
+    int hx = height/verticalReps;
+    int horizontalReps = 5;
+    int wx = width/horizontalReps;
+    int q  = 0;
+    pg = createGraphics(width, height, P3D);
+    pg.colorMode(RGB);
+    pg.beginDraw();
+    for (int i = ceil(-hx - (millis()*.2f) % (2*hx)); i < (verticalReps + 1)*hx; i += hx) {
+      pg.noStroke();
+      int color1 = color(i*222/width%255, -i*222/height%255, 77, random(20, 120));
+      color1 =lerpColor(this.picked, color1, .3f+.5f*sin(millis()*.0002f));
+
+      int color2 = color(random(255)*222/width%255, -random(255)*222/width%255, random(100, 200), random(10, 100));
+      pg.fill(lerpColor(color2, this.picked, .5f*sin(millis()*.0002f)));
+      for (int j = 0; j < horizontalReps; j++) {
         float w2 = j * wx;
 
         if (q % 2 == 0) {
           pg.triangle(w2, i, w2, i + hx, w2 + wx, (2 * i + hx)/2);
         } else {
 
-          pg.fill(w2*222/width%255, -w2*222/width%255, random(100, 200), random(10, 100));
+          int color3 = color(w2*222/width%255, -w2*222/width%255, random(100, 200), random(10, 100));
+          pg.fill(lerpColor(color3, this.picked, .5f*sin(millis()*.0002f)));
           pg.triangle(w2 + wx, i, w2 + wx, i + hx, w2, (2 * i + hx)/2);
         }
         q++;
       }
     }
     pg.endDraw();
-    pushMatrix();
-    translate(0, 0, -5);
+    //pushMatrix();
+    //translate(0, 0, -5);
     image(pg, 0, 0);
-    popMatrix();
+    //popMatrix();
   }
 }
-
-public class Band {
+  public class Band {
 
   private String name;
   //0 is left
@@ -661,7 +727,96 @@ class BarsEffect extends Effect {
     image(pg, 0, 0);
   }
 }
+class ColorDiffusion {
+  int lastLogicUpdate;
+  float w, h;
+  int colorChannels = 3;
 
+  PGraphics[][] hist;
+  PGraphics[] colorSpread;
+
+  PImage screenScrape;
+
+  ColorDiffusion() {
+    init();
+  }
+  public void init() {
+    lastLogicUpdate = millis();
+    w = width;
+    h = height;
+    screenScrape = createImage(width, height, ARGB);
+    colorSpread = new PGraphics[colorChannels];
+    for (int i = 0; i < colorChannels; i++) {
+      colorSpread[i] = createGraphics(width, height, P3D);
+    }
+    hist = new PGraphics[histSize][colorChannels];
+    for (int i = 0; i < histSize; i++) {
+      for (int j = 0; j < colorChannels; j++) {
+        hist[i][j] = createGraphics(width, height, P3D);
+      }
+    }
+  }
+
+  public void display() {
+    if (width != w || height != h) {
+      println("colorDiffusion needs to resize");
+      init();
+    }
+    if (postEffect) {
+      screenScrape.loadPixels();
+      int pixelColor;
+      for (int x = 0; x < width; x++) {
+        for (int y  = 0; y < height; y++) {
+          println(x, y);
+
+          colorSpread[0].beginDraw();
+          pixelColor = screenScrape.pixels[x + width*y];
+          colorSpread[0].fill(red(pixelColor));
+          //colorSpread[0].stroke(red(c));
+          colorSpread[0].ellipse(x, y, 1, 1);
+          colorSpread[0].endDraw();
+
+          colorSpread[1].beginDraw();
+          colorSpread[1].fill(green(pixelColor));
+          // colorSpread[1].stroke(green(c));
+          colorSpread[1].ellipse(x, y, 1, 1);
+          colorSpread[1].endDraw();
+
+          colorSpread[2].beginDraw();
+          colorSpread[2].fill(blue(pixelColor));
+          //colorSpread[2].stroke(blue(c));
+          colorSpread[2].ellipse(x, y, 1, 1);
+          colorSpread[2].endDraw();
+        }
+      }
+
+      colorShift();
+      shiftHist();
+
+      for (PGraphics i : colorSpread) {
+        image(i, 0, 0);
+      }
+      screenScrape.updatePixels();
+    }
+  }
+
+
+  public void shiftHist() {
+    for (int i = hist.length-1; i > 1; i++) {
+      hist[i] = hist[i-1];
+    }
+    for (int i = 0; i < colorChannels; i++) {
+      hist[0][i] = colorSpread[i];
+    }
+  }
+
+  public void colorShift() {
+    int spread = 50;
+    colorSpread[0].translate(-spread, 0);
+    colorSpread[1].translate(0, spread);
+    colorSpread[2].translate(spread, 0);
+  }
+}
 public class ColorPicker {
   //using A4 tuning of 432 hz using an equal tempered scale: http://www.phy.mtu.edu/~suits/notefreq432.html
   // frequency n = baseFreqeuency (A4 of 432hz) * a^n where a = 2^(1/12) and n equals the number of half steps from the fixed base note
@@ -671,9 +826,10 @@ public class ColorPicker {
 
   //color picking based off the wavelength that a certain color is in light based on a base 432hz tuning, example drawn from: http://www.roelhollander.eu/en/tuning-frequency/sound-light-colour/, consider this for later: http://www.fourmilab.ch/documents/specrend/
   //                    C0,       C0#,     D0,      D0#,     E0,      F0,     F0#,      G0,       G0#,     A0,      A0#,     B0    
-  int[] colorChart = {0xff4CFF00, 0xff00FF73, 0xff00a7FF, 0xff0020FF, 0xff3500FF, 0xff5600B6, 0xff4E006C, 0xff9F0000, 0xffDB0000, 0xffFF3600, 0xffFFC100, 0xffBFFF00};
-  
-  
+  //color[] physicsTheme = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
+//color[] darkColorScheme = {#33A000, #4FB77D, #697479, #182367, #3B1267, #2C0758, #3F0358, #580F01, #4D0A0A, #E32D00, #A57C00, #597401};
+//color[] neonTheme = {#FFFF00,#F2EA02,#FF0000,#FF3300,#00FF00,#00FF66,#00FFFF,#0062FF,#FF00FF,#FF0099,#9D00FF, #6E0DD0};
+  int[] colorChart = {0xffFFFF00,0xffF2EA02,0xffFF0000,0xffFF3300,0xff00FF00,0xff00FF66,0xff00FFFF,0xff0062FF,0xffFF00FF,0xffFF0099,0xff9D00FF, 0xff6E0DD0};
   int histDepth = histSize;
   int audioRanges = 6; //all, sub, low, mid, upper, high
   int[][] colors;
@@ -1134,7 +1290,6 @@ public class EffectManager {
     e.display(x, y, h, w, rx, ry, rz);
   }
 }
-
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
@@ -1154,7 +1309,7 @@ public class EqRing extends Effect {
   float waveH = 100;
 
   public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
-    subEffects[0].display(0,0,h,w,0,0,0);
+    subEffects[0].display(0, 0, h, w, 0, 0, 0);
     if (waveForm != "disabled") {
       //noCursor();
       waveForm(0, height/2.0f, waveH, 0, 0, 0);
@@ -1183,7 +1338,7 @@ public class EqRing extends Effect {
 
     if (ringDisplay) {
       noFill();
-      ring(_x, _y, nbars, i_rad, o_rot, false);
+      triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
@@ -1192,25 +1347,19 @@ public class EqRing extends Effect {
 
     if (ringDisplay) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
-      float coinflip = (millis()*1.0f/o_rad)%1.0f;
-      if (coinflip<0.5f) {
-        noFill();
-        stroke(lerp1, o_rad/3);
-      } else {
-        fill(lerp1, o_rad/3);
-        noStroke();
-      }
+      noFill();
+      stroke(lerp1, o_rad/3);
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(s));
-      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
 
       pushMatrix();
       translate(_x, _y, 0);
       rotateX(sin(-(s)));
-      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
 
       int lerp2 = lerpColor(current, lastPicked, 0.66f);
@@ -1218,20 +1367,16 @@ public class EqRing extends Effect {
       pushMatrix();
       translate(_x, _y, 0);
       rotateY(sin(s)); 
-      if (coinflip<0.5f) {
-        noFill();
-        stroke(lerp2, o_rad/3);
-      } else {
-        fill(lerp2, o_rad/3);
-        noStroke();
-      }
-      ring(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
+      noFill();
+      stroke(lerp2, o_rad/3);
+
+      triRing(0, 0, num_tri_oring, o_rad+pad, o_rot, true);
       popMatrix();
 
       pushMatrix();
       translate(_x, _y, 0);
       rotateY(sin(-(s)));
-      ring(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
+      triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
     }
     last_rad = o_rad;
@@ -1305,7 +1450,7 @@ public class EqRing extends Effect {
 
 
   //creates a ring of outward facing triangles
-  public void ring(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
+  public void triRing(float _x, float _y, int _n, float _r, float rot, Boolean ori) {
     // _x, _y = center point
     // _n = number of triangles in ring
     // _r = radius of ring (measured to tri center point)
@@ -1340,8 +1485,18 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0f-_r);
     }
+    if (ori) {
+      float top = spec[1][maxIndex]*5/25;
+      for (int i  = 0; i < top ; i++) {
 
-    polygon(0, 0, _s, 3);
+        strokeWeight((top-i) * 3);
+
+        polygon(i*10, 0, _s, 3);
+      }
+    } else {
+      strokeWeight(2);
+      polygon(0, 0, _s, 3);
+    }
     popMatrix();
   }
 
@@ -1360,6 +1515,7 @@ public class EqRing extends Effect {
     endShape(CLOSE);
   }
 }
+
 public class ExpandingVis extends Effect {
 
   ExpandingVis(int size, int offset, float hzMult, String type, int h) {
@@ -1456,7 +1612,7 @@ boolean ringWave = false;
 boolean ringDisplay = true;
 boolean postEffect = false;
 float menu = millis();
-String specDispMode = "default";
+String specDispMode = "mirrored";
 String[] waveTypes = {"additive", "multi", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
@@ -1558,12 +1714,14 @@ public void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    if (postEffect) {
-      println("ReactionDiffusion postEffect disabled");
-    } else {
-      println("ReactionDiffusion postEffect enabled");
-    }
-    postEffect = !postEffect;
+    BGPattern = (BGPattern + 1)%3;
+    println("BGPattern switched to: " + BGPattern);
+    //if (postEffect) {
+    //  println("ColorDiffusion postEffect disabled");
+    //} else {
+    //  println("ColorDiffusion postEffect enabled");
+    //}
+    //postEffect = !postEffect;
   }  else if (key == '5') {
     if (ringDisplay) {
       println("ReactionDiffusion postEffect disabled");
@@ -1649,169 +1807,6 @@ public class MirroredVerticalVis extends Effect {
       line((i + .5f)*x_scale - w/2.0f, h/2.0f + spec[1][i], 
         (i + .5f)*x_scale - w/2.0f, h/2.0f - spec[1][i]);
       popMatrix();
-    }
-  }
-}
-class ReactionDiffusion {
-  Float[] r, g, b, a;
-  Float[] r2, g2, b2, a2;
-  Float[][][] hist;
-  Float[][][] convolutions;
-  Float scale = (1.0f/2.0f);
-  int lastLogicUpdate;
-  float w, h;
-
-  ReactionDiffusion() {
-    convolutions = new Float[][][]{
-      //red
-      {{0.0f, 2.0f, 1.0f}, 
-        {0.0f, 4.0f, 2.0f}, 
-      {0.0f, 2.0f, 1.0f}}, 
-      //green
-      {{0.5f, 2.0f, 0.5f}, 
-        {1.0f, 4.0f, 1.0f}, 
-      {2.0f, 2.2f, 2.0f}}, 
-      //blue
-      {{2.0f, 2.0f, 0.0f}, 
-        {2.0f, 4.0f, 0.0f}, 
-      {2.0f, 2.0f, 0.0f}}, 
-      //alpha
-      {{0.0f, -1.0f, 0.0f}, 
-        {-1.0f, 5.0f, -1.0f}, 
-      {0.0f, -1.0f, 0.0f}}};
-    lastLogicUpdate = millis();
-    init();
-  }
-  public void init() {
-    loadPixels();
-    w = width;
-    h = height;
-    int pl = pixels.length;
-    r = new Float[pl];
-    g = new Float[pl];
-    b = new Float[pl];
-    a = new Float[pl];
-    r2 = new Float[pl];
-    g2 = new Float[pl];
-    b2 = new Float[pl];
-    a2 = new Float[pl];
-    hist = new Float[4][histSize][pl];
-    updatePixels();
-  }
-
-  Thread logicThread = new Thread(new Runnable() {
-    public void run() {
-
-      while (true) {
-        if (postEffect) {
-          if (width != w || height != h) {
-            init();
-          }
-
-          loadPixels();
-          int pl = pixels.length;
-          for (int i = 0; i < pl; i++) {
-            int c = pixels[i];
-            r[i] = red(c);
-            g[i] = green(c);
-            b[i] = blue(c);
-            a[i] = alpha(c);
-          }
-
-          convolve();
-          shiftHist();
-          combine();
-
-          updatePixels();
-        }
-        //------------
-        //framelimiter
-        int timeToWait = 1000/ap.logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
-        if (timeToWait > 1) {
-          try {
-            //sleep long enough so we aren't faster than the logicFPS
-            Thread.sleep( timeToWait );
-          }
-          catch ( InterruptedException e )
-          {
-            e.printStackTrace();
-            Thread.currentThread().interrupt();
-          }
-        }
-        lastLogicUpdate = millis();
-      }
-    }
-  }
-  );
-
-  public void combine() {
-    int[] pixtemp = new int[pixels.length];
-    for (int i = hist[0].length-1; i >= 0; i++) {
-      for (int p = 0; p < hist[0][0].length; p++) {
-        int c = color(hist[0][i][p], hist[1][i][p], hist[2][i][p], hist[3][i][p]);
-        pixtemp[p] += c;
-      }
-    }
-    pixels = pixtemp;
-    clear();
-  }
-
-  public void shiftHist() {
-
-    Float[][] outs = {r2, g2, b2, a2};
-    //for (int q = 0; q < pixels.length; q++) {
-    //  pixels[q]-= color(hist[0][0][q], hist[1][0][q], hist[2][0][q], hist[3][0][q]);
-    //}
-    for (int i = 0; i < outs.length; i++) {
-      for (int t = hist[i].length-1; t > 0; t--) {
-        hist[i][t] = hist[i][t-1];
-      }
-      hist[i][0] = outs[i];
-    }
-  }
-
-  public void convolve() {
-
-    Float[][] ins = {r, g, b, a};
-    Float[][] outs = {r2, g2, b2, a2};
-
-    for (int i = 0; i < ins.length; i++) {
-      for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height; y++) {
-          int pixelIndex = x+ width*y;
-
-          Float colorIn = ins[i][pixelIndex];
-
-          ////apply each part of the convolutions matricies to each color part
-          //for (int conv = 0; conv < convolutions.length; conv++) {
-          //  Float[][] convArr = convolutions[conv];
-          //  for (int row = 0; row <  convArr.length; row++ ) {
-          //    Float[] convRow = convArr[row];
-          //    for (int col = 0; col < convRow.length; col++) {
-          //      Float f = convRow[col]*scale;
-          //      int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
-          //      int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
-          //      int outIndex = x_out+ width*y_out; 
-          //      outs[i][outIndex] = f*colorIn;
-          //    }
-          //  }
-          //}
-
-          //apply each convolution to the relevant color part
-            Float[][] convArr = convolutions[min(convolutions.length-1,i)];
-            for (int row = 0; row <  convArr.length; row++ ) {
-              Float[] convRow = convArr[row];
-              for (int col = 0; col < convRow.length; col++) {
-                Float f = convRow[col]*scale;
-                int x_out = min(max((x-floor(convRow.length/2)) + col, 0), width);
-                int y_out = min(max((y-floor(convArr.length/2)) + row, 0), height);
-                int outIndex = x_out+ width*y_out; 
-                outs[i][outIndex] = f*colorIn;
-              }
-            }
-          
-        }
-      }
     }
   }
 }
@@ -2081,7 +2076,7 @@ class SpotlightBarsEffect extends Effect {
     popMatrix();
   }
 }
-  public void settings() {  size(1000, 700, P3D); }
+  public void settings() {  fullScreen(P3D); }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "CAVERNOS" };
     if (passedArgs != null) {

@@ -1,4 +1,4 @@
-public class Band {
+  public class Band {
 
   private String name;
   //0 is left
