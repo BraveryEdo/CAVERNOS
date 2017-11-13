@@ -1,9 +1,20 @@
 public class BackgroundPattern extends Effect {
   PGraphics pg;
+  float[][] pointSizes;
+  float avgBri;
 
+  float noisescale = 0.025;    
+  float gridSize = 25;
 
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
+    init();
+  }
+
+  void init() {
+    pg = createGraphics(width, height, P3D);
+
+    pointSizes = new float[ceil((width/2.0)/gridSize)][ceil((height/2.0)/gridSize)];
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -14,31 +25,24 @@ public class BackgroundPattern extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    switch(BGPattern) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      perlinGridPattern();
-      break;
-    default:
-      diamondPattern();
-      break;
-    }
+    perlinGridPattern();
   }
 
   void perlinGridPattern() {
-    pg = createGraphics(width, height, P3D);
+    if (width/2.0/gridSize != pointSizes.length || height/2.0/gridSize != pointSizes[0].length) { 
+      init();
+      println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
+    }
+    float tAvgBri = 0;
+
     pg.beginDraw();
     pg.clear();
-    pg.noStroke();
+
     pg.colorMode(HSB);
     pg.sphereDetail(32);
-
-    float noisescale = 0.0025;    
-    float gridSize = 25;
-    for (int y = 0; y < height/2.0; y+=gridSize) {
-      for (int x = 0; x < width/2.0; x+=gridSize) {
+    pg.noStroke();
+    for (int y = 0; y < ceil((height/2.0)/gridSize); y++) {
+      for (int x = 0; x < ceil((width/2.0)/gridSize); x++) {
         float perl = (((sin(millis()*.002)+PI*abs(cos(millis()*.00002)*5))*noise(x*noisescale, y*noisescale, millis()*0.0002)%PI)-(PI/2))*160;
 
         float hue = (millis()*.02 + abs(perl)) %255;
@@ -50,15 +54,24 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
-          bRad = (max(bri, 100)/240)*radius;
+          if (avgBri < 95) {
+            bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
+          } else if (avgBri < 115) {
+            bRad = radius;
+          } else {
+            bRad = (max(bri, 22/7*30)/240)*radius;
+          }
           break;
         case 1:
-          bRad = radius;
-          break;
-        case 2:
           bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
           break;
+        case 2:
+          bRad = radius;
+          break;
         case 3:
+          bRad = (max(bri, 22/7*30)/240)*radius;
+          break;
+        case 4:
           bRad = radius;
           break;
         default:
@@ -66,54 +79,25 @@ public class BackgroundPattern extends Effect {
           break;
         }
 
+        float ps = pointSizes[x][y];
+
+        ps = lerp(ps, bRad, .35);
+        tAvgBri  += bri;
+        pointSizes[x][y] = ps;
+
         pg.fill(hue, sat, bri);
-        pg.noStroke();
-        pg.ellipse(x+radius/2.0, y+radius/2.0, bRad, bRad);
-        pg.ellipse(width-(x+radius/2.0), y+radius/2.0, bRad, bRad);
-        pg.ellipse(x+radius/2.0, height-(y+radius/2.0), bRad, bRad);
-        pg.ellipse(width-(x+radius/2.0), height-(y+radius/2.0), bRad, bRad);
-      }
-    }
-
-
-    pg.endDraw();
-    image(pg, 0, 0);
-  }
-
-  void diamondPattern() {
-    int verticalReps = 10;
-    int hx = height/verticalReps;
-    int horizontalReps = 5;
-    int wx = width/horizontalReps;
-    int q  = 0;
-    pg = createGraphics(width, height, P3D);
-    pg.colorMode(RGB);
-    pg.beginDraw();
-    for (int i = ceil(-hx - (millis()*.2) % (2*hx)); i < (verticalReps + 1)*hx; i += hx) {
-      pg.noStroke();
-      color color1 = color(i*222/width%255, -i*222/height%255, 77, random(20, 120));
-      color1 =lerpColor(this.picked, color1, .3+.5*sin(millis()*.0002));
-
-      color color2 = color(random(255)*222/width%255, -random(255)*222/width%255, random(100, 200), random(10, 100));
-      pg.fill(lerpColor(color2, this.picked, .5*sin(millis()*.0002)));
-      for (int j = 0; j < horizontalReps; j++) {
-        float w2 = j * wx;
-
-        if (q % 2 == 0) {
-          pg.triangle(w2, i, w2, i + hx, w2 + wx, (2 * i + hx)/2);
-        } else {
-
-          color color3 = color(w2*222/width%255, -w2*222/width%255, random(100, 200), random(10, 100));
-          pg.fill(lerpColor(color3, this.picked, .5*sin(millis()*.0002)));
-          pg.triangle(w2 + wx, i, w2 + wx, i + hx, w2, (2 * i + hx)/2);
-        }
-        q++;
+        pg.ellipse(x*gridSize+radius/2.0, y*gridSize+radius/2.0, ps, ps);
+        pg.ellipse(width-(x*gridSize+radius/2.0), y*gridSize+radius/2.0, ps, ps);
+        pg.ellipse(x*gridSize+radius/2.0, height-(y*gridSize+radius/2.0), ps, ps);
+        pg.ellipse(width-(x*gridSize+radius/2.0), height-(y*gridSize+radius/2.0), ps, ps);
       }
     }
     pg.endDraw();
-    //pushMatrix();
-    //translate(0, 0, -5);
     image(pg, 0, 0);
-    //popMatrix();
+    avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
+    textAlign(LEFT);
+    textSize(42);
+    fill(255);
+    text("avgBri: " + avgBri, 0, 42);
   }
 }
