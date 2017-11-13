@@ -489,10 +489,8 @@ public class BackgroundPattern extends Effect {
     textAlign(LEFT);
     textSize(42);
     fill(255);
-    text("avgBri: " + avgBri, 0, 42);
   }
 }
-
   public class Band {
 
   private String name;
