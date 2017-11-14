@@ -5,6 +5,7 @@ public class BackgroundPattern extends Effect {
 
   float noisescale = 0.025;    
   float gridSize = 25;
+  float fakePI = 22.0/7.0;
 
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
@@ -54,12 +55,16 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
-          if (avgBri < 95) {
-            bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
-          } else if (avgBri < 115) {
+          if (avgBri < fakePI * 30) {
+              bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
+          } else if (avgBri < fakePI * 37) {
+            bRad = radius;
+          } else if (avgBri < fakePI * 44){
+            bRad = radius*(max(bri, fakePI * 30)/240);
+          } else if(avgBri < fakePI * 47){ 
             bRad = radius;
           } else {
-            bRad = (max(bri, 22/7*30)/240)*radius;
+            bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
           }
           break;
         case 1:
@@ -95,8 +100,5 @@ public class BackgroundPattern extends Effect {
     pg.endDraw();
     image(pg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
-    textAlign(LEFT);
-    textSize(42);
-    fill(255);
   }
 }
