@@ -41,7 +41,8 @@ public void setup() {
   loading++;
   //size(1000, 700, P3D);
   
-  frameRate(240);
+  frameRate(60);
+  noCursor();   
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
@@ -76,7 +77,6 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  ColorDiffusion cDiff;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -181,7 +181,7 @@ public class AudioProcessor {
     bands[4] = high;
     bands[5] = all;
     
-    cDiff = new ColorDiffusion();
+
 
     logicThread.start();
     println("audioProcessor started");
@@ -208,8 +208,8 @@ public class AudioProcessor {
       c++;
     }
     
-    cDiff.screenScrape = get();
-    cDiff.display();
+
+
   }
 
 
@@ -396,6 +396,7 @@ public class BackgroundPattern extends Effect {
 
   float noisescale = 0.025f;    
   float gridSize = 25;
+  float fakePI = 22.0f/7.0f;
 
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
@@ -445,12 +446,16 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
-          if (avgBri < 95) {
-            bRad = (255/max(bri, 100))*radius/2.0f+radius/2.0f;
-          } else if (avgBri < 115) {
+          if (avgBri < fakePI * 30) {
+              bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
+          } else if (avgBri < fakePI * 37) {
+            bRad = radius;
+          } else if (avgBri < fakePI * 44){
+            bRad = radius*(max(bri, fakePI * 30)/240);
+          } else if(avgBri < fakePI * 47){ 
             bRad = radius;
           } else {
-            bRad = (max(bri, 22/7*30)/240)*radius;
+            bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
           }
           break;
         case 1:
@@ -486,9 +491,6 @@ public class BackgroundPattern extends Effect {
     pg.endDraw();
     image(pg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
-    textAlign(LEFT);
-    textSize(42);
-    fill(255);
   }
 }
   public class Band {
@@ -711,96 +713,6 @@ class BarsEffect extends Effect {
     pg.popMatrix();
     pg.endDraw();
     image(pg, 0, 0);
-  }
-}
-class ColorDiffusion {
-  int lastLogicUpdate;
-  float w, h;
-  int colorChannels = 3;
-
-  PGraphics[][] hist;
-  PGraphics[] colorSpread;
-
-  PImage screenScrape;
-
-  ColorDiffusion() {
-    init();
-  }
-  public void init() {
-    lastLogicUpdate = millis();
-    w = width;
-    h = height;
-    screenScrape = createImage(width, height, ARGB);
-    colorSpread = new PGraphics[colorChannels];
-    for (int i = 0; i < colorChannels; i++) {
-      colorSpread[i] = createGraphics(width, height, P3D);
-    }
-    hist = new PGraphics[histSize][colorChannels];
-    for (int i = 0; i < histSize; i++) {
-      for (int j = 0; j < colorChannels; j++) {
-        hist[i][j] = createGraphics(width, height, P3D);
-      }
-    }
-  }
-
-  public void display() {
-    if (width != w || height != h) {
-      println("colorDiffusion needs to resize");
-      init();
-    }
-    if (postEffect) {
-      screenScrape.loadPixels();
-      int pixelColor;
-      for (int x = 0; x < width; x++) {
-        for (int y  = 0; y < height; y++) {
-          println(x, y);
-
-          colorSpread[0].beginDraw();
-          pixelColor = screenScrape.pixels[x + width*y];
-          colorSpread[0].fill(red(pixelColor));
-          //colorSpread[0].stroke(red(c));
-          colorSpread[0].ellipse(x, y, 1, 1);
-          colorSpread[0].endDraw();
-
-          colorSpread[1].beginDraw();
-          colorSpread[1].fill(green(pixelColor));
-          // colorSpread[1].stroke(green(c));
-          colorSpread[1].ellipse(x, y, 1, 1);
-          colorSpread[1].endDraw();
-
-          colorSpread[2].beginDraw();
-          colorSpread[2].fill(blue(pixelColor));
-          //colorSpread[2].stroke(blue(c));
-          colorSpread[2].ellipse(x, y, 1, 1);
-          colorSpread[2].endDraw();
-        }
-      }
-
-      colorShift();
-      shiftHist();
-
-      for (PGraphics i : colorSpread) {
-        image(i, 0, 0);
-      }
-      screenScrape.updatePixels();
-    }
-  }
-
-
-  public void shiftHist() {
-    for (int i = hist.length-1; i > 1; i++) {
-      hist[i] = hist[i-1];
-    }
-    for (int i = 0; i < colorChannels; i++) {
-      hist[0][i] = colorSpread[i];
-    }
-  }
-
-  public void colorShift() {
-    int spread = 50;
-    colorSpread[0].translate(-spread, 0);
-    colorSpread[1].translate(0, spread);
-    colorSpread[2].translate(spread, 0);
   }
 }
 public class ColorPicker {
@@ -1322,7 +1234,7 @@ public class EqRing extends Effect {
       subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    if (ringDisplay) {
+    if (ringDisplay && gmax > 45) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
@@ -1331,7 +1243,7 @@ public class EqRing extends Effect {
       o_rad+= 1;
     } 
 
-    if (ringDisplay) {
+    if (ringDisplay && gmax >50) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
       noFill();
       stroke(lerp1, o_rad/3);
@@ -1600,7 +1512,7 @@ boolean ringDisplay = true;
 boolean postEffect = false;
 float menu = millis();
 String specDispMode = "mirrored";
-String[] waveTypes = {"additive", "multi", "disabled"};
+String[] waveTypes = {"additive", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
 float step = 1.618f;

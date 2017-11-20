@@ -20,7 +20,8 @@ void setup() {
   loading++;
   //size(1000, 700, P3D);
   fullScreen(P3D);
-  frameRate(240);
+  frameRate(60);
+  noCursor();   
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
