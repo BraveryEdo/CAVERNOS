@@ -55,17 +55,8 @@ public class ExpandingVis extends Effect {
       }
       current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
       for (int i = 0; i < size; i++) {
-        if (gradient && colorIndex !=0) {
-          if (i < size /4) {
-            stroke(lerpColor(current, prev, 0.5*i/size));
-          } else if (i > .75*size) {
-            stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
-          } else {
-            stroke(current);
-          }
-        } else {
-          stroke(current);
-        }
+
+        stroke(current);
 
         noFill();
         pushMatrix();

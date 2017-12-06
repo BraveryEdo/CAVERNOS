@@ -115,6 +115,9 @@
     effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 
+  public String getName(){
+    return name;
+  }
 
 
   public void display(float left, float top, float right, float bottom) {

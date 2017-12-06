@@ -1,11 +1,11 @@
 public class BackgroundPattern extends Effect {
   PGraphics pg;
   float[][] pointSizes;
+  float[][] zPos;
   float avgBri;
 
   float noisescale = 0.025;    
   float gridSize = 25;
-  float fakePI = 22.0/7.0;
 
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
@@ -16,6 +16,7 @@ public class BackgroundPattern extends Effect {
     pg = createGraphics(width, height, P3D);
 
     pointSizes = new float[ceil((width/2.0)/gridSize)][ceil((height/2.0)/gridSize)];
+    zPos = new float[ceil((width/2.0)/gridSize)][ceil((height/2.0)/gridSize)];
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -30,6 +31,8 @@ public class BackgroundPattern extends Effect {
   }
 
   void perlinGridPattern() {
+    float gMax = spec[1][maxIndex];
+
     if (width/2.0/gridSize != pointSizes.length || height/2.0/gridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
@@ -40,7 +43,6 @@ public class BackgroundPattern extends Effect {
     pg.clear();
 
     pg.colorMode(HSB);
-    pg.sphereDetail(32);
     pg.noStroke();
     for (int y = 0; y < ceil((height/2.0)/gridSize); y++) {
       for (int x = 0; x < ceil((width/2.0)/gridSize); x++) {
@@ -55,30 +57,27 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
+        case 1:
           if (avgBri < fakePI * 30) {
-              bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
+            bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
           } else if (avgBri < fakePI * 37) {
             bRad = radius;
-          } else if (avgBri < fakePI * 44){
+          } else if (avgBri < fakePI * 44) {
             bRad = radius*(max(bri, fakePI * 30)/240);
-          } else if(avgBri < fakePI * 47){ 
+          } else if (avgBri < fakePI * 47) { 
             bRad = radius;
           } else {
             bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
           }
           break;
-        case 1:
+        case 2:
           bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
           break;
-        case 2:
-          bRad = radius;
-          break;
-        case 3:
+        case 4:
           bRad = (max(bri, 22/7*30)/240)*radius;
           break;
-        case 4:
-          bRad = radius;
-          break;
+        case 3:
+        case 5:
         default:
           bRad = radius;
           break;
@@ -87,14 +86,37 @@ public class BackgroundPattern extends Effect {
         float ps = pointSizes[x][y];
 
         ps = lerp(ps, bRad, .35);
-        tAvgBri  += bri;
         pointSizes[x][y] = ps;
 
+        tAvgBri  += bri;
+
         pg.fill(hue, sat, bri);
+
+        float zDisp = (BGPattern != 0 && gMax > 65) ? noise((width-x)*noisescale, (height-y)*noisescale, millis()*noisescale)*gMax : 0;
+        float zp = zPos[x][y];
+        zp = lerp(zp, zDisp, .35);
+        zDisp = zp;
+        zPos[x][y] = zp;
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(x*gridSize+radius/2.0, y*gridSize+radius/2.0, ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(width-(x*gridSize+radius/2.0), y*gridSize+radius/2.0, ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(x*gridSize+radius/2.0, height-(y*gridSize+radius/2.0), ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(width-(x*gridSize+radius/2.0), height-(y*gridSize+radius/2.0), ps, ps);
+        pg.popMatrix();
       }
     }
     pg.endDraw();

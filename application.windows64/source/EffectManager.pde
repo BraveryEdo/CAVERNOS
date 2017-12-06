@@ -49,33 +49,33 @@ public class EffectManager {
 
     hzMult = hz;
     offset = off;
-    
+
     switch(name) {
     case "all":
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
-    //case "sub": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "low": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "mid": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "upper": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "high":
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
+      //case "sub": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "low": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "mid": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "upper": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "high":
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
     default:
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
+      e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
     }
-    
+
 
     println("effectManager for '" + name + "' loaded");
     loading--;
@@ -103,27 +103,21 @@ public class EffectManager {
   }
 
   protected void switchEffect(String newName) {
-    boolean grad = e.gradient;
     switch(newName) {
     case "expanding":
       e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "mirroredALL":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "default":
-      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
+      e = new pixieVis(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
+      e = new pixieVis(size, offset, hzMult, effectName, histLen);
       break;
     }
   }

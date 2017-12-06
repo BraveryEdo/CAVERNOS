@@ -12,7 +12,6 @@ abstract class Effect {
   int[][] sorted;
   int [][][] sortedHist;
   int colorIndex;
-  boolean gradient;
   Effect[] subEffects;
 
   Effect(String n, String t, int s, int o, float h, int hist) {
@@ -29,7 +28,6 @@ abstract class Effect {
     sorted = new int[channels][size];
     sortedHist = new int[histDepth][channels][size];
     colorIndex = cp.getIndex(t);
-    gradient = false;
     println("effect '" + n + "' for range type '" + t + "' loaded");
   }
 
@@ -123,15 +121,5 @@ abstract class Effect {
         se.streamSpec(s, sort);
       }
     }
-  }
-  public void toggleGradient() { 
-    gradient = !gradient;
-    //propogate to subEffects
-    if (subEffects != null) {
-      for (Effect se : subEffects) {
-        se.toggleGradient();
-      }
-    }
-  }
-  
+  }    
 }

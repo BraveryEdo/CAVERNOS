@@ -25,6 +25,7 @@ public class CAVERNOS extends PApplet {
 
 
 
+float fakePI = 22.0f/7.0f;
 int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
@@ -77,6 +78,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
+  String mostIntesneBand = "sub";
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -193,9 +195,9 @@ public class AudioProcessor {
     for (Band b : bands) {
 
       if (b.name == "all") {
-        b .display(width/4.0f, height/4.0f, 3*width/4.0f, 3*height/4.0f);
+        b .display(0,0,width,height);
       } else if (specDispMode == "default") {
-        b.display(0, height-((c+1)*height/ap.bands.length), width, height-(c*height/(ap.bands.length-1)));
+        b.display(0, 0, width, height);
       } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
         float x = width/2.0f;
         float w = height/(ap.bands.length-1);
@@ -368,7 +370,16 @@ public class AudioProcessor {
         upper.stream(upper2);
         high.stream(high2);
         all.stream(all2);
+        
+        int maxInt = 1;
+        for (int i  = 1; i < bands.length-1; i++) {
+          if(bands[i].maxIntensity >  bands[maxInt].maxIntensity){
+            maxInt = i;
+          }
+        }
 
+        mostIntesneBand = bands[maxInt].getName();
+        
         //------------
         //framelimiter
         int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
@@ -392,11 +403,11 @@ public class AudioProcessor {
 public class BackgroundPattern extends Effect {
   PGraphics pg;
   float[][] pointSizes;
+  float[][] zPos;
   float avgBri;
 
   float noisescale = 0.025f;    
   float gridSize = 25;
-  float fakePI = 22.0f/7.0f;
 
   BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
@@ -407,6 +418,7 @@ public class BackgroundPattern extends Effect {
     pg = createGraphics(width, height, P3D);
 
     pointSizes = new float[ceil((width/2.0f)/gridSize)][ceil((height/2.0f)/gridSize)];
+    zPos = new float[ceil((width/2.0f)/gridSize)][ceil((height/2.0f)/gridSize)];
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -421,6 +433,8 @@ public class BackgroundPattern extends Effect {
   }
 
   public void perlinGridPattern() {
+    float gMax = spec[1][maxIndex];
+
     if (width/2.0f/gridSize != pointSizes.length || height/2.0f/gridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
@@ -431,7 +445,6 @@ public class BackgroundPattern extends Effect {
     pg.clear();
 
     pg.colorMode(HSB);
-    pg.sphereDetail(32);
     pg.noStroke();
     for (int y = 0; y < ceil((height/2.0f)/gridSize); y++) {
       for (int x = 0; x < ceil((width/2.0f)/gridSize); x++) {
@@ -446,30 +459,27 @@ public class BackgroundPattern extends Effect {
         float bRad = 0;
         switch(BGPattern) {
         case 0:
+        case 1:
           if (avgBri < fakePI * 30) {
-              bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
+            bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
           } else if (avgBri < fakePI * 37) {
             bRad = radius;
-          } else if (avgBri < fakePI * 44){
+          } else if (avgBri < fakePI * 44) {
             bRad = radius*(max(bri, fakePI * 30)/240);
-          } else if(avgBri < fakePI * 47){ 
+          } else if (avgBri < fakePI * 47) { 
             bRad = radius;
           } else {
             bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
           }
           break;
-        case 1:
+        case 2:
           bRad = (255/max(bri, 100))*radius/2.0f+radius/2.0f;
           break;
-        case 2:
-          bRad = radius;
-          break;
-        case 3:
+        case 4:
           bRad = (max(bri, 22/7*30)/240)*radius;
           break;
-        case 4:
-          bRad = radius;
-          break;
+        case 3:
+        case 5:
         default:
           bRad = radius;
           break;
@@ -478,14 +488,37 @@ public class BackgroundPattern extends Effect {
         float ps = pointSizes[x][y];
 
         ps = lerp(ps, bRad, .35f);
-        tAvgBri  += bri;
         pointSizes[x][y] = ps;
 
+        tAvgBri  += bri;
+
         pg.fill(hue, sat, bri);
+
+        float zDisp = (BGPattern != 0 && gMax > 65) ? noise((width-x)*noisescale, (height-y)*noisescale, millis()*noisescale)*gMax : 0;
+        float zp = zPos[x][y];
+        zp = lerp(zp, zDisp, .35f);
+        zDisp = zp;
+        zPos[x][y] = zp;
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(x*gridSize+radius/2.0f, y*gridSize+radius/2.0f, ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(width-(x*gridSize+radius/2.0f), y*gridSize+radius/2.0f, ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(x*gridSize+radius/2.0f, height-(y*gridSize+radius/2.0f), ps, ps);
+        pg.popMatrix();
+
+        pg.pushMatrix();
+        pg.translate(0, 0, zDisp);
         pg.ellipse(width-(x*gridSize+radius/2.0f), height-(y*gridSize+radius/2.0f), ps, ps);
+        pg.popMatrix();
       }
     }
     pg.endDraw();
@@ -610,6 +643,9 @@ public class BackgroundPattern extends Effect {
     effectManager.pushAnalysis(spec, sortedSpecIndex, maxIntensity, avg, maxInd);
   }
 
+  public String getName(){
+    return name;
+  }
 
 
   public void display(float left, float top, float right, float bottom) {
@@ -725,9 +761,9 @@ public class ColorPicker {
   //color picking based off the wavelength that a certain color is in light based on a base 432hz tuning, example drawn from: http://www.roelhollander.eu/en/tuning-frequency/sound-light-colour/, consider this for later: http://www.fourmilab.ch/documents/specrend/
   //                    C0,       C0#,     D0,      D0#,     E0,      F0,     F0#,      G0,       G0#,     A0,      A0#,     B0    
   //color[] physicsTheme = {#4CFF00, #00FF73, #00a7FF, #0020FF, #3500FF, #5600B6, #4E006C, #9F0000, #DB0000, #FF3600, #FFC100, #BFFF00};
-//color[] darkColorScheme = {#33A000, #4FB77D, #697479, #182367, #3B1267, #2C0758, #3F0358, #580F01, #4D0A0A, #E32D00, #A57C00, #597401};
-//color[] neonTheme = {#FFFF00,#F2EA02,#FF0000,#FF3300,#00FF00,#00FF66,#00FFFF,#0062FF,#FF00FF,#FF0099,#9D00FF, #6E0DD0};
-  int[] colorChart = {0xffFFFF00,0xffF2EA02,0xffFF0000,0xffFF3300,0xff00FF00,0xff00FF66,0xff00FFFF,0xff0062FF,0xffFF00FF,0xffFF0099,0xff9D00FF, 0xff6E0DD0};
+  //color[] darkColorScheme = {#33A000, #4FB77D, #697479, #182367, #3B1267, #2C0758, #3F0358, #580F01, #4D0A0A, #E32D00, #A57C00, #597401};
+  //color[] neonTheme = {#FFFF00,#F2EA02,#FF0000,#FF3300,#00FF00,#00FF66,#00FFFF,#0062FF,#FF00FF,#FF0099,#9D00FF, #6E0DD0};
+  int[] colorChart = {0xffFFFF00, 0xffF2EA02, 0xffFF0000, 0xffFF3300, 0xff00FF00, 0xff00FF66, 0xff00FFFF, 0xff0062FF, 0xffFF00FF, 0xffFF0099, 0xff9D00FF, 0xff6E0DD0};
   int histDepth = histSize;
   int audioRanges = 6; //all, sub, low, mid, upper, high
   int[][] colors;
@@ -736,13 +772,14 @@ public class ColorPicker {
     int octaves = 15;
     freqs = new float[octaves*baseFreqs.length];
 
+    colors = new int[histDepth][audioRanges];
+
     for (int i = 0; i < octaves; i++) {
       for (int j = 0; j < baseFreqs.length; j++) {
         freqs[i*baseFreqs.length + j] = baseFreqs[j]*pow(2, i);
       }
     }
-    
-    colors = new int[histDepth][audioRanges];
+
 
     println("color picker loaded");
     loading--;
@@ -765,32 +802,34 @@ public class ColorPicker {
     }
     return picked;
   }
-  
-  public void setColor(String n, int c){
+
+  public void setColor(String n, int c) {
     int ind = getIndex(n);
-    for(int i = histDepth - 1; i > 0; i--){
+    for (int i = histDepth - 1; i > 0; i--) {
       colors[i][ind] = colors[i-1][ind];
     }
-    if(ind != 0){
+    if (ind != 0) {
       colors[0][ind] = c;
     } else {
-       float r = 0,b = 0,g = 0;
-       for (int i = 1; i < audioRanges; i++){
-           r += red(colors[0][i]);
-           b += blue(colors[0][i]);
-           g += green(colors[0][i]);
-       }
-       r/=(audioRanges-2); g/=(audioRanges-2); b/=(audioRanges-2);
-       colors[0][ind] = color(r,g,b);  
+      float r = 0, b = 0, g = 0;
+      for (int i = 1; i < audioRanges; i++) {
+        r += red(colors[0][i]);
+        b += blue(colors[0][i]);
+        g += green(colors[0][i]);
+      }
+      r/=(audioRanges-2); 
+      g/=(audioRanges-2); 
+      b/=(audioRanges-2);
+      colors[0][ind] = color(r, g, b);
     }
   }
 
-  public int[] getColors(){
+  public int[] getColors() {
     return colors[0];
   }
-  
-  public int[][] getColorHistory(){
-     return colors; 
+
+  public int[][] getColorHistory() {
+    return colors;
   }
 
   public int getIndex(String n) {
@@ -821,6 +860,40 @@ public class ColorPicker {
     return i;
   }
 
+  public int getPrev(String n) {
+    int cRet;
+    switch (n) {
+    case "all":
+    case "sub":
+      cRet = colors [0][getIndex(n)];
+      break;
+    default:
+      cRet = colors[0][getIndex(n) - 1];
+      break;
+    }
+    return cRet;
+  }
+
+  public int getNext(String n) {
+    int cRet;
+    switch (n) {
+    case "all":
+    case "high":
+      cRet = colors [0][getIndex(n)];
+      break;
+    default:
+      cRet = colors[0][getIndex(n) + 1];
+      break;
+    }
+    return cRet;
+  }
+  
+  public int setAlpha(int c, int a){
+   return (c & 0xFFFFFF) | (a << 24); 
+   //color t = color(red(c), green(c), blue(c), a);
+   //return t;
+  }
+
   //not really the right place to do this, I can build it out in the effect manager later
   //public color multiMix(float[] hzs, float[] mags) {
   //  if (hzs.length > 1) {
@@ -846,13 +919,17 @@ public class ColorPicker {
   //  return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   //}
 }
-public class DefaultVis extends Effect {
+public class pixieVis extends Effect {
 
   boolean mirrored = false;
+  float spread = 0;
+  float offset;
 
-  DefaultVis(int size, int offset, float hzMult, String type, int h) {
+  pixieVis(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
     mirrored = false;
+    offset = cp.getIndex(type)*7000;
+    offset += millis()*PI;
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -863,42 +940,42 @@ public class DefaultVis extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/((type == "sub")?size-1:size);   
-    cp.setColor(type, this.picked);
-    strokeWeight(1);
-    int[] c = cp.getColors();
-    int current, prev, next;
-    current = c[colorIndex];
-    for (int i = (type == "sub")?1:0; i < size; i++) {
-      if (gradient && colorIndex != 0) {
-        if (colorIndex == 1) {
-          prev = current;
-          next = c[colorIndex + 1];
-        } else if (colorIndex == cp.audioRanges - 1) {
-          prev = c[colorIndex-1];
-          next = c[1];
-        } else {
-          prev = c[colorIndex-1];
-          next = c[colorIndex + 1];
-        }
-        if (i < size /2) {
-          stroke(lerpColor(prev, current, 0.5f+i/size));
-        } else {
-          stroke(lerpColor(current, next, 0.5f*(i-(size/2))/size));
-        }
-      } else {
-        stroke(picked);
-      }
-      noFill();
-      pushMatrix();
-      translate(x, y, 0);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      int it = (type == "sub")?i -1:i;
-      line( (it + .5f)*x_scale - w/2.0f, h/2.0f, (it + .5f)*x_scale - w/2.0f, h/2.0f - min(spec[1][i], h));
+    if (type.equals(ap.mostIntesneBand)) {
+      cp.setColor(type, this.picked);
+      int c = this.picked;
 
-      popMatrix();
+      float bandMax = spec[1][maxIndex];
+
+      if (bandMax > 15) {
+        spread = min(spread+1, 160);
+      } else {
+        spread = max(spread-fakePI, 0);
+      }
+
+      if (spread > 0) {
+        pushMatrix();
+        translate(0, 0, 5);
+        ellipse(100, 100*cp.getIndex(type), 50, 50);
+        popMatrix();
+        for (float i = - spread; i < 0; i++) {
+          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {
+            float cutoff = .75f;
+            float val = noise(j/fakePI, i/fakePI, offset+millis());
+            if (val > cutoff) {
+              float ratio = 200.0f*val/cutoff;
+              noStroke();
+              fill(cp.setAlpha(c, floor(ratio)));
+              pushMatrix();
+              translate(0, 0, ratio/50.0f+1);
+              ellipse(width/2.0f+j, height/2.0f+i, ratio/10.0f, ratio/10.0f);
+              ellipse(width/2.0f-j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
+              ellipse(width/2.0f+j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
+              ellipse(width/2.0f-j, height/2.0f+i, ratio/10.0f, ratio/10.0f);
+              popMatrix();
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -916,7 +993,6 @@ abstract class Effect {
   int[][] sorted;
   int [][][] sortedHist;
   int colorIndex;
-  boolean gradient;
   Effect[] subEffects;
 
   Effect(String n, String t, int s, int o, float h, int hist) {
@@ -933,7 +1009,6 @@ abstract class Effect {
     sorted = new int[channels][size];
     sortedHist = new int[histDepth][channels][size];
     colorIndex = cp.getIndex(t);
-    gradient = false;
     println("effect '" + n + "' for range type '" + t + "' loaded");
   }
 
@@ -1027,17 +1102,7 @@ abstract class Effect {
         se.streamSpec(s, sort);
       }
     }
-  }
-  public void toggleGradient() { 
-    gradient = !gradient;
-    //propogate to subEffects
-    if (subEffects != null) {
-      for (Effect se : subEffects) {
-        se.toggleGradient();
-      }
-    }
-  }
-  
+  }    
 }
 public class EffectManager {
   private String effectName;
@@ -1090,33 +1155,33 @@ public class EffectManager {
 
     hzMult = hz;
     offset = off;
-    
+
     switch(name) {
     case "all":
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
-    //case "sub": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "low": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "mid": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "upper": 
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
-    //case "high":
-    //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-    //  break;
+      //case "sub": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "low": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "mid": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "upper": 
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
+      //case "high":
+      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
+      //  break;
     default:
-      e = new DefaultVis(size, offset, hzMult, name, histLen);
+      e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
     }
-    
+
 
     println("effectManager for '" + name + "' loaded");
     loading--;
@@ -1144,27 +1209,21 @@ public class EffectManager {
   }
 
   protected void switchEffect(String newName) {
-    boolean grad = e.gradient;
     switch(newName) {
     case "expanding":
       e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "mirroredALL":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
       break;
     case "default":
-      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
+      e = new pixieVis(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new DefaultVis(size, offset, hzMult, effectName, histLen);
-      e.gradient = grad;
+      e = new pixieVis(size, offset, hzMult, effectName, histLen);
       break;
     }
   }
@@ -1191,11 +1250,12 @@ public class EffectManager {
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[5];
     subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
     subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
     subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
     subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[4] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -1219,12 +1279,12 @@ public class EqRing extends Effect {
     int[] c = cp.getColors();
     int current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex]*5;
+    float gmax = spec[1][maxIndex];
     float s = sin((t)*.0002f);
 
     float o_rot = -.75f*s;
     float i_rad = 187-5*s;
-    float o_rad = (i_rad*1.33f+gmax*1.33f);
+    float o_rad = (i_rad*1.33f+gmax*fakePI);
 
     stroke(current);
 
@@ -1243,6 +1303,9 @@ public class EqRing extends Effect {
       o_rad+= 1;
     } 
 
+    if (gmax > 30) {
+      subEffects[4].display(_x, _y, h, w, 0, 0, 0);
+    }
     if (ringDisplay && gmax >50) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
       noFill();
@@ -1277,6 +1340,7 @@ public class EqRing extends Effect {
       triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
     }
+
     last_rad = o_rad;
     lastPicked = lerpColor(current, lastPicked, .8f);
   }
@@ -1335,11 +1399,7 @@ public class EqRing extends Effect {
       s.curveVertex(width, 0);
       s.endShape();
       if (maxWaveH > 5) {
-        if (maxWaveH > 15) {
-          shape(s, 0, 5*sin(millis()*.02f));
-        } else {
-          shape(s, 0, 0);
-        }
+        shape(s, 0, 0);
       }
       popMatrix();
     }
@@ -1383,11 +1443,11 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0f-_r);
     }
-    
+
     float top = spec[1][maxIndex]*5/50;
     if (ori && top > 2) {
-      
-      for (int i  = 0; i < top ; i++) {
+
+      for (int i  = 0; i < top; i++) {
 
         strokeWeight((top-i) * 3);
 
@@ -1472,17 +1532,8 @@ public class ExpandingVis extends Effect {
       }
       current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
       for (int i = 0; i < size; i++) {
-        if (gradient && colorIndex !=0) {
-          if (i < size /4) {
-            stroke(lerpColor(current, prev, 0.5f*i/size));
-          } else if (i > .75f*size) {
-            stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
-          } else {
-            stroke(current);
-          }
-        } else {
-          stroke(current);
-        }
+
+        stroke(current);
 
         noFill();
         pushMatrix();
@@ -1516,28 +1567,6 @@ String[] waveTypes = {"additive", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
 float step = 1.618f;
-
-
-//mouse interaction
-public void mouseClicked() {
-  if (mouseButton == RIGHT) {
-    println("right click");
-    if (gradientMode == "none") {
-      gradientMode = "gradient"; 
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = true;
-      }
-      println("gradients enabled");
-    } else {
-      gradientMode = "none";
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = false;
-      }
-      println("gradients disabled");
-    }
-  }
-}
-
 
 //key interaction
 public void keyPressed() {
@@ -1613,7 +1642,7 @@ public void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%5;
+    BGPattern = (BGPattern + 1)%6;
     println("BGPattern switched to: " + BGPattern);
     //if (postEffect) {
     //  println("ColorDiffusion postEffect disabled");
@@ -1623,9 +1652,9 @@ public void keyPressed() {
     //postEffect = !postEffect;
   } else if (key == '5') {
     if (ringDisplay) {
-      println("ReactionDiffusion postEffect disabled");
+      println("eqRing, outer edge disabled");
     } else {
-      println("ReactionDiffusion postEffect enabled");
+      println("eqRing, outer edge  enabled");
     }
     ringDisplay = !ringDisplay;
   } else if (key == '6') {
@@ -1647,6 +1676,41 @@ public void keyPressed() {
     }
   } else {
     println("unhandled key: " + key);
+  }
+}
+public class Lazer extends Effect {
+  int beams;
+  Lazer(int size, int offset, float hzMult, String type, int h) {
+    super("Lazer visualizer", type, size, offset, hzMult, h);
+    beams = 7;
+  }
+
+
+  public void display(float left, float top, float right, float bottom) {
+    float w = (right-left);
+    float h = (bottom-top);
+
+    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
+  }
+
+  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+
+    float tmax =  sortedHist[0][1][0]*30;
+    noStroke();
+    fill(red(picked), green(picked), blue(picked), tmax/20);
+    int cBeams =  floor(beams + 3*noise(millis() * .002f));
+    for (int i = 0; i < cBeams; i++) {
+      pushMatrix();
+      beginShape();
+      vertex(0, 0, 0);
+      vertex(0, tmax, 0);
+      vertex(tmax/15.0f+tmax*sin(millis()*.002f), tmax/(2+sin(millis()*.002f)), 0);
+      translate(width/2.0f, height/2.0f, 0);
+      
+      rotateZ((i+sin(millis()*.0002f))*TWO_PI/cBeams);
+      endShape(CLOSE);
+      popMatrix();
+    }
   }
 }
 public class MirroredVerticalVis extends Effect {
@@ -1691,19 +1755,8 @@ public class MirroredVerticalVis extends Effect {
     }
 
     for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) { 
 
-        if (i < size /4) {
-          stroke(lerpColor(current, prev, 0.5f*i/size));
-        } else if (i > .75f*size) {
-          stroke(lerpColor(current, next, 0.5f*(i-(size/4))/size));
-        } else {
-          stroke(current);
-        }
-      } else {
-        stroke(picked);
-      }
-
+      stroke(picked);
       noFill();
       pushMatrix();
       translate(x, y, 0);

@@ -4,6 +4,7 @@ import ddf.minim.analysis.*;
 import static java.awt.event.KeyEvent.*;
 
 
+float fakePI = 22.0/7.0;
 int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;

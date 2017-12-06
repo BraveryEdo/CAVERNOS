@@ -40,19 +40,8 @@ public class MirroredVerticalVis extends Effect {
     }
 
     for (int i = 0; i < size; i++) {
-      if (gradient && colorIndex !=0) { 
 
-        if (i < size /4) {
-          stroke(lerpColor(current, prev, 0.5*i/size));
-        } else if (i > .75*size) {
-          stroke(lerpColor(current, next, 0.5*(i-(size/4))/size));
-        } else {
-          stroke(current);
-        }
-      } else {
-        stroke(picked);
-      }
-
+      stroke(picked);
       noFill();
       pushMatrix();
       translate(x, y, 0);

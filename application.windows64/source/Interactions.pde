@@ -11,28 +11,6 @@ String waveForm = waveTypes[0];
 float ringW = 350;
 float step = 1.618;
 
-
-//mouse interaction
-void mouseClicked() {
-  if (mouseButton == RIGHT) {
-    println("right click");
-    if (gradientMode == "none") {
-      gradientMode = "gradient"; 
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = true;
-      }
-      println("gradients enabled");
-    } else {
-      gradientMode = "none";
-      for (Band b : ap.bands) {
-        b.effectManager.e.gradient = false;
-      }
-      println("gradients disabled");
-    }
-  }
-}
-
-
 //key interaction
 void keyPressed() {
   if (key == CODED) {
@@ -107,7 +85,7 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%5;
+    BGPattern = (BGPattern + 1)%6;
     println("BGPattern switched to: " + BGPattern);
     //if (postEffect) {
     //  println("ColorDiffusion postEffect disabled");
@@ -117,9 +95,9 @@ void keyPressed() {
     //postEffect = !postEffect;
   } else if (key == '5') {
     if (ringDisplay) {
-      println("ReactionDiffusion postEffect disabled");
+      println("eqRing, outer edge disabled");
     } else {
-      println("ReactionDiffusion postEffect enabled");
+      println("eqRing, outer edge  enabled");
     }
     ringDisplay = !ringDisplay;
   } else if (key == '6') {

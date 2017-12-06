@@ -1,10 +1,14 @@
-public class DefaultVis extends Effect {
+public class pixieVis extends Effect {
 
   boolean mirrored = false;
+  float spread = 0;
+  float offset;
 
-  DefaultVis(int size, int offset, float hzMult, String type, int h) {
+  pixieVis(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
     mirrored = false;
+    offset = cp.getIndex(type)*7000;
+    offset += millis()*PI;
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -15,42 +19,42 @@ public class DefaultVis extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/((type == "sub")?size-1:size);   
-    cp.setColor(type, this.picked);
-    strokeWeight(1);
-    color[] c = cp.getColors();
-    color current, prev, next;
-    current = c[colorIndex];
-    for (int i = (type == "sub")?1:0; i < size; i++) {
-      if (gradient && colorIndex != 0) {
-        if (colorIndex == 1) {
-          prev = current;
-          next = c[colorIndex + 1];
-        } else if (colorIndex == cp.audioRanges - 1) {
-          prev = c[colorIndex-1];
-          next = c[1];
-        } else {
-          prev = c[colorIndex-1];
-          next = c[colorIndex + 1];
-        }
-        if (i < size /2) {
-          stroke(lerpColor(prev, current, 0.5+i/size));
-        } else {
-          stroke(lerpColor(current, next, 0.5*(i-(size/2))/size));
-        }
-      } else {
-        stroke(picked);
-      }
-      noFill();
-      pushMatrix();
-      translate(x, y, 0);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      int it = (type == "sub")?i -1:i;
-      line( (it + .5)*x_scale - w/2.0, h/2.0, (it + .5)*x_scale - w/2.0, h/2.0 - min(spec[1][i], h));
+    if (type.equals(ap.mostIntesneBand)) {
+      cp.setColor(type, this.picked);
+      color c = this.picked;
 
-      popMatrix();
+      float bandMax = spec[1][maxIndex];
+
+      if (bandMax > 15) {
+        spread = min(spread+1, 160);
+      } else {
+        spread = max(spread-fakePI, 0);
+      }
+
+      if (spread > 0) {
+        pushMatrix();
+        translate(0, 0, 5);
+        ellipse(100, 100*cp.getIndex(type), 50, 50);
+        popMatrix();
+        for (float i = - spread; i < 0; i++) {
+          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {
+            float cutoff = .75;
+            float val = noise(j/fakePI, i/fakePI, offset+millis());
+            if (val > cutoff) {
+              float ratio = 200.0*val/cutoff;
+              noStroke();
+              fill(cp.setAlpha(c, floor(ratio)));
+              pushMatrix();
+              translate(0, 0, ratio/50.0+1);
+              ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
+              ellipse(width/2.0-j, height/2.0-i, ratio/10.0, ratio/10.0);
+              ellipse(width/2.0+j, height/2.0-i, ratio/10.0, ratio/10.0);
+              ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
+              popMatrix();
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -5,6 +5,7 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
+  String mostIntesneBand = "sub";
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -121,9 +122,9 @@ public class AudioProcessor {
     for (Band b : bands) {
 
       if (b.name == "all") {
-        b .display(width/4.0, height/4.0, 3*width/4.0, 3*height/4.0);
+        b .display(0,0,width,height);
       } else if (specDispMode == "default") {
-        b.display(0, height-((c+1)*height/ap.bands.length), width, height-(c*height/(ap.bands.length-1)));
+        b.display(0, 0, width, height);
       } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
         float x = width/2.0;
         float w = height/(ap.bands.length-1);
@@ -296,7 +297,16 @@ public class AudioProcessor {
         upper.stream(upper2);
         high.stream(high2);
         all.stream(all2);
+        
+        int maxInt = 1;
+        for (int i  = 1; i < bands.length-1; i++) {
+          if(bands[i].maxIntensity >  bands[maxInt].maxIntensity){
+            maxInt = i;
+          }
+        }
 
+        mostIntesneBand = bands[maxInt].getName();
+        
         //------------
         //framelimiter
         int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;

@@ -1,11 +1,12 @@
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[5];
     subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
     subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
     subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
     subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[4] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -29,12 +30,12 @@ public class EqRing extends Effect {
     color[] c = cp.getColors();
     color current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex]*5;
+    float gmax = spec[1][maxIndex];
     float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
     float i_rad = 187-5*s;
-    float o_rad = (i_rad*1.33+gmax*1.33);
+    float o_rad = (i_rad*1.33+gmax*fakePI);
 
     stroke(current);
 
@@ -53,6 +54,9 @@ public class EqRing extends Effect {
       o_rad+= 1;
     } 
 
+    if (gmax > 30) {
+      subEffects[4].display(_x, _y, h, w, 0, 0, 0);
+    }
     if (ringDisplay && gmax >50) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);
       noFill();
@@ -87,6 +91,7 @@ public class EqRing extends Effect {
       triRing(0, 0, num_tri_oring, o_rad+pad, -o_rot, true);
       popMatrix();
     }
+
     last_rad = o_rad;
     lastPicked = lerpColor(current, lastPicked, .8);
   }
@@ -145,11 +150,7 @@ public class EqRing extends Effect {
       s.curveVertex(width, 0);
       s.endShape();
       if (maxWaveH > 5) {
-        if (maxWaveH > 15) {
-          shape(s, 0, 5*sin(millis()*.02));
-        } else {
-          shape(s, 0, 0);
-        }
+        shape(s, 0, 0);
       }
       popMatrix();
     }
@@ -193,11 +194,11 @@ public class EqRing extends Effect {
     } else {
       rotateZ(PI+PI/2.0-_r);
     }
-    
+
     float top = spec[1][maxIndex]*5/50;
     if (ori && top > 2) {
-      
-      for (int i  = 0; i < top ; i++) {
+
+      for (int i  = 0; i < top; i++) {
 
         strokeWeight((top-i) * 3);
 
