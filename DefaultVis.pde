@@ -2,13 +2,25 @@ public class pixieVis extends Effect {
 
   boolean mirrored = false;
   float spread = 0;
+  int histSize = 16;
+  PShape[] shapeHist;
+  boolean shapeTrailInUse;
   float offset;
 
   pixieVis(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
-    mirrored = false;
     offset = cp.getIndex(type)*7000;
     offset += millis()*PI;
+
+    shapeHist = new PShape[histSize];
+    initShapeHist();
+  }
+
+  void initShapeHist() {
+    shapeTrailInUse = false;
+    for (int i = 0; i < histSize; i++) {
+      shapeHist[i] = createShape();
+    }
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -19,16 +31,21 @@ public class pixieVis extends Effect {
   }
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+
     if (type.equals(ap.mostIntesneBand)) {
-      cp.setColor(type, this.picked);
+      //if(type == "sub"){
       color c = this.picked;
 
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(spread+1, 160);
+        spread = min(spread+1, 150);
       } else {
-        spread = max(spread-fakePI, 0);
+        spread = max(spread-1, 0);
+      }
+
+      for (int i = histSize-1; i > 0; i--) {
+        shapeHist[i] = shapeHist[i-1];
       }
 
       if (spread > 0) {
@@ -36,8 +53,35 @@ public class pixieVis extends Effect {
         //translate(0, 0, 5);
         //ellipse(100, 100*cp.getIndex(type), 50, 50);
         //popMatrix();
+
+
+        if (type == "high" || type == "upper"||type == "mid") {
+          PShape smokeRing = createShape();
+          smokeRing.beginShape();
+          smokeRing.stroke(picked);
+          smokeRing.strokeWeight(1);
+          //smokeRing.fill(cp.getPrev(type));
+          smokeRing.noFill();
+          float timeOffset = millis()*.002;
+          for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0) {
+            float noiseDist = spread*(1+.5*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
+            float _y = noiseDist*cos(i);
+            float _x = noiseDist*sin(i);
+            smokeRing.vertex(_x, _y, 5);
+          }
+          smokeRing.endShape(CLOSE);
+
+          shapeHist[0] = smokeRing;
+
+          shapeTrailInUse = true;
+          for (int i = histSize-1; i > 0; i--) {
+            shape(shapeHist[i], width/2.0, height/2.0);//, spread*2 + 20, spread*2 + 20);
+          }
+        } else if (shapeTrailInUse) {
+          initShapeHist();
+        }
         for (float i = - spread; i < 0; i++) {
-          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {
+          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
             float cutoff = .75;
             float val = noise(j/fakePI, i/fakePI, offset+millis());
             if (val > cutoff) {

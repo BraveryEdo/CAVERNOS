@@ -16,7 +16,6 @@ public class ExpandingVis extends Effect {
     float mix = .15;
     float ER = .15+.07*sin(millis()); //expansion reduction
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     color [][] hist = cp.getColorHistory();
     color current, prev, next, bckgrnd;

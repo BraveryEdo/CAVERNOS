@@ -31,7 +31,7 @@ public class BackgroundPattern extends Effect {
   }
 
   void perlinGridPattern() {
-    float gMax = spec[1][maxIndex];
+      float gMax = spec[1][maxIndex];
 
     if (width/2.0/gridSize != pointSizes.length || height/2.0/gridSize != pointSizes[0].length) { 
       init();

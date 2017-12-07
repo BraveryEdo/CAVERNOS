@@ -108,6 +108,7 @@ abstract class Effect {
   }
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
+    cp.setColor(this.type, this.picked);
     sorted = sort;
     for (int i = 0; i < histDepth-1; i++) {
       specHist[i+1] = specHist[i];

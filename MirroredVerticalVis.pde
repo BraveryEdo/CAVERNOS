@@ -15,7 +15,6 @@ public class MirroredVerticalVis extends Effect {
     float x_scale = w/size;   
     float mix = .15;
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     color [][] hist = cp.getColorHistory();
     color[] c = hist[0];

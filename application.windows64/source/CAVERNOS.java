@@ -433,7 +433,7 @@ public class BackgroundPattern extends Effect {
   }
 
   public void perlinGridPattern() {
-    float gMax = spec[1][maxIndex];
+      float gMax = spec[1][maxIndex];
 
     if (width/2.0f/gridSize != pointSizes.length || height/2.0f/gridSize != pointSizes[0].length) { 
       init();
@@ -888,10 +888,14 @@ public class ColorPicker {
     return cRet;
   }
   
+  public int setAlpha(int c, float a){
+    return this.setAlpha(c, floor(a));
+  }
+  
   public int setAlpha(int c, int a){
-   return (c & 0xFFFFFF) | (a << 24); 
-   //color t = color(red(c), green(c), blue(c), a);
-   //return t;
+   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24); 
+   int t = color(red(c), green(c), blue(c), (max(min(a, 255),0)));
+   return t;
   }
 
   //not really the right place to do this, I can build it out in the effect manager later
@@ -923,13 +927,25 @@ public class pixieVis extends Effect {
 
   boolean mirrored = false;
   float spread = 0;
+  int histSize = 16;
+  PShape[] shapeHist;
+  boolean shapeTrailInUse;
   float offset;
 
   pixieVis(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
-    mirrored = false;
     offset = cp.getIndex(type)*7000;
     offset += millis()*PI;
+
+    shapeHist = new PShape[histSize];
+    initShapeHist();
+  }
+
+  public void initShapeHist() {
+    shapeTrailInUse = false;
+    for (int i = 0; i < histSize; i++) {
+      shapeHist[i] = createShape();
+    }
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -940,16 +956,21 @@ public class pixieVis extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+
     if (type.equals(ap.mostIntesneBand)) {
-      cp.setColor(type, this.picked);
+      //if(type == "sub"){
       int c = this.picked;
 
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(spread+1, 160);
+        spread = min(spread+1, 150);
       } else {
-        spread = max(spread-fakePI, 0);
+        spread = max(spread-1, 0);
+      }
+
+      for (int i = histSize-1; i > 0; i--) {
+        shapeHist[i] = shapeHist[i-1];
       }
 
       if (spread > 0) {
@@ -957,8 +978,35 @@ public class pixieVis extends Effect {
         //translate(0, 0, 5);
         //ellipse(100, 100*cp.getIndex(type), 50, 50);
         //popMatrix();
+
+
+        if (type == "high" || type == "upper"||type == "mid") {
+          PShape smokeRing = createShape();
+          smokeRing.beginShape();
+          smokeRing.stroke(picked);
+          smokeRing.strokeWeight(1);
+          //smokeRing.fill(cp.getPrev(type));
+          smokeRing.noFill();
+          float timeOffset = millis()*.002f;
+          for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0f) {
+            float noiseDist = spread*(1+.5f*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
+            float _y = noiseDist*cos(i);
+            float _x = noiseDist*sin(i);
+            smokeRing.vertex(_x, _y, 5);
+          }
+          smokeRing.endShape(CLOSE);
+
+          shapeHist[0] = smokeRing;
+
+          shapeTrailInUse = true;
+          for (int i = histSize-1; i > 0; i--) {
+            shape(shapeHist[i], width/2.0f, height/2.0f);//, spread*2 + 20, spread*2 + 20);
+          }
+        } else if (shapeTrailInUse) {
+          initShapeHist();
+        }
         for (float i = - spread; i < 0; i++) {
-          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {
+          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
             float cutoff = .75f;
             float val = noise(j/fakePI, i/fakePI, offset+millis());
             if (val > cutoff) {
@@ -1089,6 +1137,7 @@ abstract class Effect {
   }
   public void streamSpec(float[][] s, int[][] sort) { 
     this.spec = s;
+    cp.setColor(this.type, this.picked);
     sorted = sort;
     for (int i = 0; i < histDepth-1; i++) {
       specHist[i+1] = specHist[i];
@@ -1274,7 +1323,6 @@ public class EqRing extends Effect {
     }
 
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     int[] c = cp.getColors();
     int current = c[colorIndex];
@@ -1493,7 +1541,6 @@ public class ExpandingVis extends Effect {
     float mix = .15f;
     float ER = .15f+.07f*sin(millis()); //expansion reduction
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     int [][] hist = cp.getColorHistory();
     int current, prev, next, bckgrnd;
@@ -1730,7 +1777,6 @@ public class MirroredVerticalVis extends Effect {
     float x_scale = w/size;   
     float mix = .15f;
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     int [][] hist = cp.getColorHistory();
     int[] c = hist[0];

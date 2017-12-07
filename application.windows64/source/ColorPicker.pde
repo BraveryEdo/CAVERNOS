@@ -135,10 +135,14 @@ public class ColorPicker {
     return cRet;
   }
   
+  public color setAlpha(color c, float a){
+    return this.setAlpha(c, floor(a));
+  }
+  
   public color setAlpha(color c, int a){
-   return (c & 0xFFFFFF) | (a << 24); 
-   //color t = color(red(c), green(c), blue(c), a);
-   //return t;
+   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24); 
+   color t = color(red(c), green(c), blue(c), (max(min(a, 255),0)));
+   return t;
   }
 
   //not really the right place to do this, I can build it out in the effect manager later

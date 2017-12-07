@@ -25,7 +25,6 @@ public class EqRing extends Effect {
     }
 
 
-    cp.setColor(type, this.picked);
     strokeWeight(1);
     color[] c = cp.getColors();
     color current = c[colorIndex];
