@@ -32,10 +32,10 @@ public class pixieVis extends Effect {
       }
 
       if (spread > 0) {
-        pushMatrix();
-        translate(0, 0, 5);
-        ellipse(100, 100*cp.getIndex(type), 50, 50);
-        popMatrix();
+        //pushMatrix();
+        //translate(0, 0, 5);
+        //ellipse(100, 100*cp.getIndex(type), 50, 50);
+        //popMatrix();
         for (float i = - spread; i < 0; i++) {
           for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {
             float cutoff = .75;
