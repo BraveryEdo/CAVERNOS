@@ -32,14 +32,14 @@ public class pixieVis extends Effect {
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
 
-    if (type.equals(ap.mostIntesneBand)) {
+    if (type.equals(ap.mostIntenseBand)) {
       //if(type == "sub"){
       color c = this.picked;
 
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(spread+1, 150);
+        spread = min(max(spread+1, bandMax*2.0), 150);
       } else {
         spread = max(spread-1, 0);
       }
@@ -58,7 +58,7 @@ public class pixieVis extends Effect {
         if (type == "high" || type == "upper"||type == "mid") {
           PShape smokeRing = createShape();
           smokeRing.beginShape();
-          smokeRing.stroke(picked);
+          smokeRing.stroke(cp.setAlpha(picked,222));
           smokeRing.strokeWeight(1);
           //smokeRing.fill(cp.getPrev(type));
           smokeRing.noFill();
@@ -80,20 +80,20 @@ public class pixieVis extends Effect {
         } else if (shapeTrailInUse) {
           initShapeHist();
         }
-        for (float i = - spread; i < 0; i++) {
+        for (float i = - spread; i < spread; i++) {
           for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
-            float cutoff = .75;
-            float val = noise(j/fakePI, i/fakePI, offset+millis());
+            float cutoff = .78 - bandMax/10000.0;
+            float val = noise(j/fakePI + 6.9*sin(millis()/77.7 + bandMax), i/fakePI + 93*sin(millis()/7000.0), offset+millis()*.00142857);
             if (val > cutoff) {
               float ratio = 200.0*val/cutoff;
               noStroke();
-              fill(cp.setAlpha(c, floor(ratio)));
+              fill(cp.setAlpha(c, floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
               pushMatrix();
               translate(0, 0, ratio/50.0+1);
-              ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
+              //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0-j, height/2.0-i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0+j, height/2.0-i, ratio/10.0, ratio/10.0);
-              ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
+              //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
               popMatrix();
             }
           }

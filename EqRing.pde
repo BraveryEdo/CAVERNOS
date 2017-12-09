@@ -20,7 +20,6 @@ public class EqRing extends Effect {
   void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
     subEffects[0].display(0, 0, h, w, 0, 0, 0);
     if (waveForm != "disabled") {
-      //noCursor();
       waveForm(0, height/2.0, waveH, 0, 0, 0);
     }
 
@@ -44,7 +43,7 @@ public class EqRing extends Effect {
       subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    if (ringDisplay && gmax > 45) {
+    if (ringDisplay && gmax > 35) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
@@ -105,6 +104,7 @@ public class EqRing extends Effect {
 
   void waveForm(float x, float y, float h, float rx, float ry, float rz) {
     int wDepth = sorted[1].length/10;
+    //full spectrum additive waveform
     if (waveForm == waveTypes[0]) {
       //additive
       color[] c = cp.getColors();
@@ -152,6 +152,8 @@ public class EqRing extends Effect {
         shape(s, 0, 0);
       }
       popMatrix();
+    } else if (waveForm == waveTypes[1]) {//simple additive wave form using top 4 significant frequencies
+    
     }
   }
 

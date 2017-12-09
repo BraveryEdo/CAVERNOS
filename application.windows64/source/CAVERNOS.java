@@ -70,6 +70,25 @@ public void draw() {
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
+
+  if (test) {
+    showStats();
+  }
+}
+
+public void showStats() {
+     textAlign(LEFT);
+    textSize(24);
+    fill(255);
+    text("TEST" + "\n" + 
+    "spotlightBars: " + spotlightBars + "\n" +
+    "ringWave: " + ringWave + "\n" +
+    "ringDisplay: " + ringDisplay + "\n" +
+    "specDispMode: " + specDispMode + "\n" +
+    "waveForm: " + waveForm + "\n" +
+    "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
+    "gMaxIntensity: " + ap.gMaxIntensity
+    , 50, 50);
 }
 public class AudioProcessor {
   //audio processing elements
@@ -78,7 +97,8 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  String mostIntesneBand = "sub";
+  String mostIntenseBand = "sub";
+  float gMaxIntensity = 0;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -308,21 +328,23 @@ public class AudioProcessor {
           avg += left_bin+mix_bin+right_bin;
         }
         avg /= (3* specSize);
-        if (max > 300) {
+        
+
+        if (max > 100) {
           //println(max);
-          for (int i = 0; i < specSize; i++) {
-            float scale = 300.0f/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-        } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0f/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
             }
           }
+        //} else if (max < 60 && avg > 10) {
+        //  for (int i = 0; i < specSize; i++) {
+        //    float scale = 100.0/(max-min);
+        //    for (int j = 0; j < magnitude.length; j++) {
+        //      magnitude[j][i] *= scale;
+        //    }
+        //  }
         } else if ( max < 20 && max > 5) {
           for (int i = 0; i < specSize; i++) {
             float scale = 50.0f/(max-min);
@@ -378,7 +400,8 @@ public class AudioProcessor {
           }
         }
 
-        mostIntesneBand = bands[maxInt].getName();
+        mostIntenseBand = bands[maxInt].getName();
+        gMaxIntensity = bands[maxInt].maxIntensity;
         
         //------------
         //framelimiter
@@ -957,14 +980,14 @@ public class pixieVis extends Effect {
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
 
-    if (type.equals(ap.mostIntesneBand)) {
+    if (type.equals(ap.mostIntenseBand)) {
       //if(type == "sub"){
       int c = this.picked;
 
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(spread+1, 150);
+        spread = min(max(spread+1, bandMax*2.0f), 150);
       } else {
         spread = max(spread-1, 0);
       }
@@ -983,7 +1006,7 @@ public class pixieVis extends Effect {
         if (type == "high" || type == "upper"||type == "mid") {
           PShape smokeRing = createShape();
           smokeRing.beginShape();
-          smokeRing.stroke(picked);
+          smokeRing.stroke(cp.setAlpha(picked,222));
           smokeRing.strokeWeight(1);
           //smokeRing.fill(cp.getPrev(type));
           smokeRing.noFill();
@@ -1005,20 +1028,20 @@ public class pixieVis extends Effect {
         } else if (shapeTrailInUse) {
           initShapeHist();
         }
-        for (float i = - spread; i < 0; i++) {
+        for (float i = - spread; i < spread; i++) {
           for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
-            float cutoff = .75f;
-            float val = noise(j/fakePI, i/fakePI, offset+millis());
+            float cutoff = .78f - bandMax/10000.0f;
+            float val = noise(j/fakePI + 6.9f*sin(millis()/77.7f + bandMax), i/fakePI + 93*sin(millis()/7000.0f), offset+millis()*.00142857f);
             if (val > cutoff) {
               float ratio = 200.0f*val/cutoff;
               noStroke();
-              fill(cp.setAlpha(c, floor(ratio)));
+              fill(cp.setAlpha(c, floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
               pushMatrix();
               translate(0, 0, ratio/50.0f+1);
-              ellipse(width/2.0f+j, height/2.0f+i, ratio/10.0f, ratio/10.0f);
+              //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0f-j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
               ellipse(width/2.0f+j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
-              ellipse(width/2.0f-j, height/2.0f+i, ratio/10.0f, ratio/10.0f);
+              //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
               popMatrix();
             }
           }
@@ -1318,7 +1341,6 @@ public class EqRing extends Effect {
   public void display(float _x, float _y, float h, float w, float rx, float ry, float rz) {
     subEffects[0].display(0, 0, h, w, 0, 0, 0);
     if (waveForm != "disabled") {
-      //noCursor();
       waveForm(0, height/2.0f, waveH, 0, 0, 0);
     }
 
@@ -1342,7 +1364,7 @@ public class EqRing extends Effect {
       subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
 
-    if (ringDisplay && gmax > 45) {
+    if (ringDisplay && gmax > 35) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
@@ -1403,6 +1425,7 @@ public class EqRing extends Effect {
 
   public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
     int wDepth = sorted[1].length/10;
+    //full spectrum additive waveform
     if (waveForm == waveTypes[0]) {
       //additive
       int[] c = cp.getColors();
@@ -1450,6 +1473,8 @@ public class EqRing extends Effect {
         shape(s, 0, 0);
       }
       popMatrix();
+    } else if (waveForm == waveTypes[1]) {//simple additive wave form using top 4 significant frequencies
+    
     }
   }
 
@@ -1603,17 +1628,23 @@ public class ExpandingVis extends Effect {
   }
 }
 //global variables
-String gradientMode = "gradient";
 boolean spotlightBars = false;
 boolean ringWave = false;
 boolean ringDisplay = true;
-boolean postEffect = false;
 float menu = millis();
-String specDispMode = "mirrored";
-String[] waveTypes = {"additive", "disabled"};
+String specDispMode = "off";
+String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
 float step = 1.618f;
+
+boolean test = false;
+
+public void mouseClicked(MouseEvent e) {
+  if (mouseButton == RIGHT) {
+    test = !test;
+  }
+}
 
 //key interaction
 public void keyPressed() {
@@ -1691,12 +1722,6 @@ public void keyPressed() {
   } else if (key == '4') {
     BGPattern = (BGPattern + 1)%6;
     println("BGPattern switched to: " + BGPattern);
-    //if (postEffect) {
-    //  println("ColorDiffusion postEffect disabled");
-    //} else {
-    //  println("ColorDiffusion postEffect enabled");
-    //}
-    //postEffect = !postEffect;
   } else if (key == '5') {
     if (ringDisplay) {
       println("eqRing, outer edge disabled");
@@ -1711,7 +1736,7 @@ public void keyPressed() {
       println("shpereBarsDupelicateMode enabled");
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
-} else if (key == 'w') {
+  } else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
   } else if (key == 'r') {

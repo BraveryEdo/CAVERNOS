@@ -1,15 +1,21 @@
 //global variables
-String gradientMode = "gradient";
 boolean spotlightBars = false;
 boolean ringWave = false;
 boolean ringDisplay = true;
-boolean postEffect = false;
 float menu = millis();
-String specDispMode = "mirrored";
-String[] waveTypes = {"additive", "disabled"};
+String specDispMode = "off";
+String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 float ringW = 350;
 float step = 1.618;
+
+boolean test = false;
+
+void mouseClicked(MouseEvent e) {
+  if (mouseButton == RIGHT) {
+    test = !test;
+  }
+}
 
 //key interaction
 void keyPressed() {
@@ -87,12 +93,6 @@ void keyPressed() {
   } else if (key == '4') {
     BGPattern = (BGPattern + 1)%6;
     println("BGPattern switched to: " + BGPattern);
-    //if (postEffect) {
-    //  println("ColorDiffusion postEffect disabled");
-    //} else {
-    //  println("ColorDiffusion postEffect enabled");
-    //}
-    //postEffect = !postEffect;
   } else if (key == '5') {
     if (ringDisplay) {
       println("eqRing, outer edge disabled");
@@ -107,7 +107,7 @@ void keyPressed() {
       println("shpereBarsDupelicateMode enabled");
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
-} else if (key == 'w') {
+  } else if (key == 'w') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
   } else if (key == 'r') {

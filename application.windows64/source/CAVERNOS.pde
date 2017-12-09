@@ -49,4 +49,23 @@ void draw() {
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
+
+  if (test) {
+    showStats();
+  }
+}
+
+void showStats() {
+     textAlign(LEFT);
+    textSize(24);
+    fill(255);
+    text("TEST" + "\n" + 
+    "spotlightBars: " + spotlightBars + "\n" +
+    "ringWave: " + ringWave + "\n" +
+    "ringDisplay: " + ringDisplay + "\n" +
+    "specDispMode: " + specDispMode + "\n" +
+    "waveForm: " + waveForm + "\n" +
+    "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
+    "gMaxIntensity: " + ap.gMaxIntensity
+    , 50, 50);
 }

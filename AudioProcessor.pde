@@ -5,7 +5,8 @@ public class AudioProcessor {
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
-  String mostIntesneBand = "sub";
+  String mostIntenseBand = "sub";
+  float gMaxIntensity = 0;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
@@ -235,21 +236,23 @@ public class AudioProcessor {
           avg += left_bin+mix_bin+right_bin;
         }
         avg /= (3* specSize);
-        if (max > 300) {
+        
+
+        if (max > 100) {
           //println(max);
-          for (int i = 0; i < specSize; i++) {
-            float scale = 300.0/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-        } else if (max < 60 && avg > 10) {
           for (int i = 0; i < specSize; i++) {
             float scale = 100.0/(max-min);
             for (int j = 0; j < magnitude.length; j++) {
               magnitude[j][i] *= scale;
             }
           }
+        //} else if (max < 60 && avg > 10) {
+        //  for (int i = 0; i < specSize; i++) {
+        //    float scale = 100.0/(max-min);
+        //    for (int j = 0; j < magnitude.length; j++) {
+        //      magnitude[j][i] *= scale;
+        //    }
+        //  }
         } else if ( max < 20 && max > 5) {
           for (int i = 0; i < specSize; i++) {
             float scale = 50.0/(max-min);
@@ -305,7 +308,8 @@ public class AudioProcessor {
           }
         }
 
-        mostIntesneBand = bands[maxInt].getName();
+        mostIntenseBand = bands[maxInt].getName();
+        gMaxIntensity = bands[maxInt].maxIntensity;
         
         //------------
         //framelimiter
