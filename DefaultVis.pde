@@ -1,13 +1,13 @@
-public class pixieVis extends Effect {
+public class inkBlot extends Effect {
 
   boolean mirrored = false;
   float spread = 0;
-  int histSize = 16;
+  int histSize = 4;
   PShape[] shapeHist;
   boolean shapeTrailInUse;
   float offset;
 
-  pixieVis(int size, int offset, float hzMult, String type, int h) {
+  inkBlot(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
     offset = cp.getIndex(type)*7000;
     offset += millis()*PI;
@@ -39,7 +39,7 @@ public class pixieVis extends Effect {
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(max(spread+1, bandMax*2.0), 150);
+        spread = min(min (spread+1, bandMax*2.0), 150);
       } else {
         spread = max(spread-1, 0);
       }

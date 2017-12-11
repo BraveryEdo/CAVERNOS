@@ -35,8 +35,6 @@ int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
 int logicRate = 1000;
-int BGPattern = 0;
-boolean shpereBarsDupelicateMode = false;
 
 public void setup() {
   loading++;
@@ -66,7 +64,7 @@ public void draw() {
       textAlign(CENTER);
       textSize(32);
       fill(255-(millis()-menu)/25);
-      text("Controls: 0,1,2,3,4,5, 6, 9, and w", width/2.0f, height/4.0f);
+      text("Controls: 0,1,2,3,4,5,6,7,8,9", width/2.0f, height/4.0f);
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
@@ -81,13 +79,16 @@ public void showStats() {
     textSize(24);
     fill(255);
     text("TEST" + "\n" + 
-    "spotlightBars: " + spotlightBars + "\n" +
+    "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
     "specDispMode: " + specDispMode + "\n" +
     "waveForm: " + waveForm + "\n" +
+    "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
+    "snailMode: " + snailMode +"\n" + 
+    "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
-    "gMaxIntensity: " + ap.gMaxIntensity
+    "gMaxIntensity: " + ap.gMaxIntensity 
     , 50, 50);
 }
 public class AudioProcessor {
@@ -423,26 +424,49 @@ public class AudioProcessor {
   }
   );
 }
-public class BackgroundPattern extends Effect {
-  PGraphics pg;
+public class BackgroundPatterns extends Effect {
+  PGraphics bg;
+
+  //dots
   float[][] pointSizes;
   float[][] zPos;
   float avgBri;
+  float dotsNoisescale = 0.025f;    
+  float dotsGridSize = 25;
 
-  float noisescale = 0.025f;    
-  float gridSize = 25;
+  //snailTrail
+  float[][] particles;
+  float snailNoisescale = 0.000142857f;
+  float snailGridSize = 5;
+  int numParticles = 700;
+  boolean snailReset = false;
+  float perlinOffset = random(99999);
 
-  BackgroundPattern(int size, int offset, float hzMult, String type, int h) {
+  BackgroundPatterns(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
     init();
   }
 
   public void init() {
-    pg = createGraphics(width, height, P3D);
+    bg = createGraphics(width, height, P3D);
 
-    pointSizes = new float[ceil((width/2.0f)/gridSize)][ceil((height/2.0f)/gridSize)];
-    zPos = new float[ceil((width/2.0f)/gridSize)][ceil((height/2.0f)/gridSize)];
+    pointSizes = new float[ceil((width/2.0f)/dotsGridSize)][ceil((height/2.0f)/dotsGridSize)];
+    zPos = new float[ceil((width/2.0f)/dotsGridSize)][ceil((height/2.0f)/dotsGridSize)];
+
+    particles = new float[numParticles][2];
+    snailInit();
   }
+
+  public void snailInit() {
+    for (int n = 0; n < numParticles; n++) {
+      float initX = random(width/2.0f);
+      float initY = random(width/2.0f);
+      particles[n][0] = initX;
+      particles[n][1] = initY;
+    }
+    snailReset = true;
+  }
+
 
   public void display(float left, float top, float right, float bottom) {
     float w = (right-left);
@@ -452,35 +476,41 @@ public class BackgroundPattern extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    perlinGridPattern();
+    dots();
+    if (!snailMode.equals("disabled")) {
+      snailTrail();
+      snailReset = false;
+    } else if (snailReset == false) {
+      snailInit();
+    }
   }
 
-  public void perlinGridPattern() {
-      float gMax = spec[1][maxIndex];
+  public void dots() {
+    float gMax = ap.gMaxIntensity;
 
-    if (width/2.0f/gridSize != pointSizes.length || height/2.0f/gridSize != pointSizes[0].length) { 
+    if (width/2.0f/dotsGridSize != pointSizes.length || height/2.0f/dotsGridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
     }
     float tAvgBri = 0;
 
-    pg.beginDraw();
-    pg.clear();
+    bg.beginDraw();
+    bg.clear();
 
-    pg.colorMode(HSB);
-    pg.noStroke();
-    for (int y = 0; y < ceil((height/2.0f)/gridSize); y++) {
-      for (int x = 0; x < ceil((width/2.0f)/gridSize); x++) {
-        float perl = (((sin(millis()*.002f)+PI*abs(cos(millis()*.00002f)*5))*noise(x*noisescale, y*noisescale, millis()*0.0002f)%PI)-(PI/2))*160;
+    bg.colorMode(HSB);
+    bg.noStroke();
+    for (int y = 0; y < ceil((height/2.0f)/dotsGridSize); y++) {
+      for (int x = 0; x < ceil((width/2.0f)/dotsGridSize); x++) {
+        float perl = (((sin(millis()*.002f)+PI*abs(cos(millis()*.00002f)*5))*noise(x*dotsNoisescale, y*dotsNoisescale, millis()*0.0002f)%PI)-(PI/2))*160;
 
         float hue = (millis()*.02f + abs(perl)) %255;
         float sat = 50*abs(cos(millis()*.02f))+100*sin(millis()*.002f)+16;
         float bri = 240-abs(perl)+10*sin(millis()*.00002f); 
 
-        float radius = gridSize-2;
+        float radius = dotsGridSize-2;
 
         float bRad = 0;
-        switch(BGPattern) {
+        switch(BGDotPattern) {
         case 0:
         case 1:
           if (avgBri < fakePI * 30) {
@@ -515,38 +545,108 @@ public class BackgroundPattern extends Effect {
 
         tAvgBri  += bri;
 
-        pg.fill(hue, sat, bri);
+        bg.fill(hue, sat, bri);
 
-        float zDisp = (BGPattern != 0 && gMax > 65) ? noise((width-x)*noisescale, (height-y)*noisescale, millis()*noisescale)*gMax : 0;
+        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*abs(sin(millis()*.00002f))*7, (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03f)*gMax : 0;
         float zp = zPos[x][y];
-        zp = lerp(zp, zDisp, .35f);
+        zp = lerp(zp, zDisp, .25f);
         zDisp = zp;
         zPos[x][y] = zp;
 
-        pg.pushMatrix();
-        pg.translate(0, 0, zDisp);
-        pg.ellipse(x*gridSize+radius/2.0f, y*gridSize+radius/2.0f, ps, ps);
-        pg.popMatrix();
+        bg.pushMatrix();
+        bg.translate(0, 0, zDisp);
+        bg.ellipse(x*dotsGridSize+radius/2.0f, y*dotsGridSize+radius/2.0f, ps, ps);
+        bg.popMatrix();
 
-        pg.pushMatrix();
-        pg.translate(0, 0, zDisp);
-        pg.ellipse(width-(x*gridSize+radius/2.0f), y*gridSize+radius/2.0f, ps, ps);
-        pg.popMatrix();
+        bg.pushMatrix();
+        bg.translate(0, 0, zDisp);
+        bg.ellipse(width-(x*dotsGridSize+radius/2.0f), y*dotsGridSize+radius/2.0f, ps, ps);
+        bg.popMatrix();
 
-        pg.pushMatrix();
-        pg.translate(0, 0, zDisp);
-        pg.ellipse(x*gridSize+radius/2.0f, height-(y*gridSize+radius/2.0f), ps, ps);
-        pg.popMatrix();
+        bg.pushMatrix();
+        bg.translate(0, 0, zDisp);
+        bg.ellipse(x*dotsGridSize+radius/2.0f, height-(y*dotsGridSize+radius/2.0f), ps, ps);
+        bg.popMatrix();
 
-        pg.pushMatrix();
-        pg.translate(0, 0, zDisp);
-        pg.ellipse(width-(x*gridSize+radius/2.0f), height-(y*gridSize+radius/2.0f), ps, ps);
-        pg.popMatrix();
+        bg.pushMatrix();
+        bg.translate(0, 0, zDisp);
+        bg.ellipse(width-(x*dotsGridSize+radius/2.0f), height-(y*dotsGridSize+radius/2.0f), ps, ps);
+        bg.popMatrix();
       }
     }
-    pg.endDraw();
-    image(pg, 0, 0);
+    bg.endDraw();
+    image(bg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
+  }
+
+  public void snailTrail() {
+    bg.beginDraw();
+    bg.colorMode(RGB);
+ 
+
+    float t = millis()*.0000142857f;
+    for (int n = 0; n < numParticles; n++) {
+      float[] p = particles[n];
+
+      float oldX = p[0];
+      float oldY = p[1];
+
+      bg.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
+      bg.fill(picked);
+      bg.strokeWeight(1);
+
+      float perl = noise(oldX*snailNoisescale, oldY*snailNoisescale, t+perlinOffset)*360;
+      
+      float newX = oldX + 7*sin(perl);
+      float newY = oldY + 7*cos(perl);
+
+      if (newX < -15) {
+
+        explodeLine(0, oldY);
+
+        oldX = newX = width/2.0f;//random(width/2.0);
+        oldY = newY = random(height/2.0f);
+      } else if (newX > width/2.0f) {
+        oldX = newX = 0;//random(width/2.0);
+        oldY = newY = random(height/2.0f);
+      } else if (newY < -15) {
+        oldX = newX = random(width/2.0f);
+        oldY = newY = height/2.0f;
+      }
+
+      particles[n][0] = newX;
+      particles[n][1] = newY;
+      //if (snailMode.equals("dot")) {
+      //  bg.ellipse(particles[h][n][0], particles[h][n][1], size, size);
+      //  bg.ellipse(width - particles[h][n][0], particles[h][n][1], size, size);
+      //  bg.ellipse(particles[h][n][0], height - particles[h][n][1], size, size);
+      //  bg.ellipse(width - particles[h][n][0], height - particles[h][n][1], size, size);
+      //} else if (snailMode.equals("line")) {
+
+
+      bg.line(oldX, oldY, newX, newY);
+      bg.line(width - oldX, oldY, width - newX, newY);
+      bg.line(oldX, height - oldY, newX, height - newY);
+      bg.line(width - oldX, height - oldY, width - newX, height - newY);
+    }
+
+    bg.endDraw();
+    image(bg, 0, 0);
+  }
+
+  public void explodeLine(float x, float y) {
+    float spike = random(15);
+    bg.ellipse(x, y, 5, 5);
+    line(x, y, x+spike, y);
+
+    bg.ellipse(width-x, y, 5, 5);
+    line(width-x, y, width-(x+spike), y);
+
+    bg.ellipse(width-x, height-y, 5, 5);
+    line(width-x, height-y, width-(x+spike), height-y);
+
+    bg.ellipse(x, height-y, 5, 5);
+    line(x, height-y, (x+spike), height-y);
   }
 }
   public class Band {
@@ -946,16 +1046,16 @@ public class ColorPicker {
   //  return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   //}
 }
-public class pixieVis extends Effect {
+public class inkBlot extends Effect {
 
   boolean mirrored = false;
   float spread = 0;
-  int histSize = 16;
+  int histSize = 4;
   PShape[] shapeHist;
   boolean shapeTrailInUse;
   float offset;
 
-  pixieVis(int size, int offset, float hzMult, String type, int h) {
+  inkBlot(int size, int offset, float hzMult, String type, int h) {
     super("default", type, size, offset, hzMult, h);
     offset = cp.getIndex(type)*7000;
     offset += millis()*PI;
@@ -987,7 +1087,7 @@ public class pixieVis extends Effect {
       float bandMax = spec[1][maxIndex];
 
       if (bandMax > 15) {
-        spread = min(max(spread+1, bandMax*2.0f), 150);
+        spread = min(min (spread+1, bandMax*2.0f), 150);
       } else {
         spread = max(spread-1, 0);
       }
@@ -1292,10 +1392,10 @@ public class EffectManager {
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       break;
     case "default":
-      e = new pixieVis(size, offset, hzMult, effectName, histLen);
+      e = new inkBlot(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new pixieVis(size, offset, hzMult, effectName, histLen);
+      e = new inkBlot(size, offset, hzMult, effectName, histLen);
       break;
     }
   }
@@ -1322,12 +1422,11 @@ public class EffectManager {
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[5];
-    subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
+    subEffects = new Effect[4];
+    subEffects[0] = new BackgroundPatterns(size, offset, hzMult, type, h);
     subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
-    subEffects[4] = new Lazer(size, offset, hzMult, type, h);
+    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[3] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -1349,7 +1448,7 @@ public class EqRing extends Effect {
     int[] c = cp.getColors();
     int current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex];
+    float gmax = ap.gMaxIntensity;
     float s = sin((t)*.0002f);
 
     float o_rot = -.75f*s;
@@ -1358,12 +1457,10 @@ public class EqRing extends Effect {
 
     stroke(current);
 
-    if (spotlightBars) {
+    if (sphereBars) {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
-    } else {
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
-
+    
     if (ringDisplay && gmax > 35) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
@@ -1374,7 +1471,7 @@ public class EqRing extends Effect {
     } 
 
     if (gmax > 30) {
-      subEffects[4].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
     if (ringDisplay && gmax >50) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
@@ -1424,9 +1521,7 @@ public class EqRing extends Effect {
   }
 
   public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
-    int wDepth = sorted[1].length/10;
-    //full spectrum additive waveform
-    if (waveForm == waveTypes[0]) {
+    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/10;
       //additive
       int[] c = cp.getColors();
       int current = c[colorIndex];
@@ -1440,42 +1535,41 @@ public class EqRing extends Effect {
       float hScale = h/max(max, 1);
       PShape s = createShape();
       s.beginShape();
-      s.stroke(current);
+      s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
       s.strokeWeight(1);
       s.noFill();
       s.beginShape();
       s.curveVertex(0, 0);
-      float decider = random(100);
-      float wScale =1;
-      if (decider < 33) {
-        //progresses through freqs based on time
-        wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
-      } else if (decider < 80) {
-        //use loudest third
-        wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002f)))+1), 1);
-      } else {
-        //use mid third
-        wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
-      }
+      float wScale = max((sorted[1][floor(wDepth)]), 1);
+
+      //float decider = random(100);
+      //if (decider < 33) {
+      //  //progresses through freqs based on time
+      //  wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
+      //} else if (decider < 80) {
+      //  //use loudest third
+        //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002)))+1), 1);
+      //} else {
+      //  //use mid third
+      //  wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
+      //}
       float maxWaveH = 0;
-      for (float i = 0; i < width; i+= wScale) {
+      for (float i = 0; i < width+wScale; i+= wScale) {
         float adder = 0;
         for (int j = 0; j < wDepth; j++) {
           float jHz = hzMult * (sorted[1][j] * size + offset);
           adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
         }
-        s.curveVertex(i/**wScale*/, adder/(sorted[1].length/4));
-        maxWaveH = max(maxWaveH, adder/(sorted[1].length/4));
+        s.curveVertex(i/**wScale*/, adder/wDepth);
+        maxWaveH = max(maxWaveH, adder/wDepth);
       }
       s.curveVertex(width, 0);
       s.endShape();
-      if (maxWaveH > 5) {
+      if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
         shape(s, 0, 0);
       }
       popMatrix();
-    } else if (waveForm == waveTypes[1]) {//simple additive wave form using top 4 significant frequencies
     
-    }
   }
 
 
@@ -1627,16 +1721,21 @@ public class ExpandingVis extends Effect {
     }
   }
 }
-//global variables
-boolean spotlightBars = false;
+//global toggleable variables
+
+boolean shpereBarsDupelicateMode = false;
+boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
 float menu = millis();
 String specDispMode = "off";
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
-float ringW = 350;
-float step = 1.618f;
+
+int BGDotPattern = 0;
+
+String snailMode = "disabled";
+String[] snailModes = {"disabled", "line"};
 
 boolean test = false;
 
@@ -1651,25 +1750,14 @@ public void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
       println("UP arrow key");
-      ringW += step;
+    
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
-      ringW -= step;
-      if (ringW < 0) { 
-        ringW+=step;
-      }
     } else if (keyCode == CONTROL) {
       menu = millis();
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
-    }
-  } else if (key == '9') {
-    spotlightBars = !spotlightBars;
-    if (spotlightBars) {
-      println("spotlightBars enabled");
-    } else {
-      println("spotlightBars disabled");
     }
   } else if (key == '0') {
     if (specDispMode != "off") {
@@ -1720,8 +1808,8 @@ public void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%6;
-    println("BGPattern switched to: " + BGPattern);
+    BGDotPattern = (BGDotPattern + 1)%6;
+    println("BGPattern switched to: " + BGDotPattern);
   } else if (key == '5') {
     if (ringDisplay) {
       println("eqRing, outer edge disabled");
@@ -1736,15 +1824,18 @@ public void keyPressed() {
       println("shpereBarsDupelicateMode enabled");
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
-  } else if (key == 'w') {
+  } else if (key == '7') {
+    snailMode = snailModes[(Arrays.asList(snailModes).indexOf(snailMode)+1)%snailModes.length];
+    println("snailMode set to: " + snailMode);
+  } else if (key == '8') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
-  } else if (key == 'r') {
-    ringWave = !ringWave;
-    if (ringWave) {
-      println("ringWave enabled");
+  } else if (key == '9') {
+    sphereBars = !sphereBars;
+    if (sphereBars) {
+      println("sphereBars enabled");
     } else {
-      println("ringWave disabled");
+      println("sphereBars disabled");
     }
   } else {
     println("unhandled key: " + key);
@@ -2003,106 +2094,6 @@ class SphereBars extends Effect {
       image(layers[i], 0, 0);
     }
     
-  }
-}
-class SpotlightBarsEffect extends Effect {
-
-  int nbars;
-  float spokeAngle = 0;
-  SpotlightBarsEffect(int size, int offset, float hzMult, String type, int h) {
-    super("SpotlightBarsEffect visualizer", type, size, offset, hzMult, h);
-    nbars = size;
-  }
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
-  }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    int bar_height = 5;
-    float ts = sin(millis()*.0002f);
-    float i_rad = 187-5*ts;
-    float rot = ts;
-    rectMode(CENTER);
-
-    pushMatrix();
-    translate(x, y);
-    rotate(rot);
-    float diff = 3;
-    int lowIndex = maxIndex, highIndex = maxIndex;
-    for (int i = lowIndex; i > 0; i--) {
-      if (spec[1][i-1] < spec[1][lowIndex]) {
-        lowIndex = max(i - 1, 0);
-      } else if (spec[1][i-1] - spec[1][lowIndex] < diff ) {
-        //lowIndex = i - 1;
-      } else {
-        break;
-      }
-
-      if (spec[1][i-1] < diff) {
-        break;
-      }
-    }
-    for (int i = highIndex; i < spec[1].length-2; i++) {
-      if (spec[1][i+1] < spec[1][highIndex]) {
-        highIndex = min(i + 1, spec[1].length-1);
-      } else if (spec[1][i+1] - spec[1][highIndex] < diff) {
-        //highIndex = i + 1;
-      } else { 
-        break;
-      }
-
-      if (spec[1][i+1] < diff) {
-        break;
-      }
-    }
-
-    if (highIndex == lowIndex) {
-      if (highIndex + 1  < spec[1].length) {
-        highIndex ++;
-      } else {
-        lowIndex --;
-      }
-    }
-
-    int pl = highIndex-lowIndex;
-    int reps = floor(nbars/pl);
-    if (reps %2 != 0) { 
-      reps++;
-    }
-
-    int bandColor = cp.getColors()[colorIndex];
-    float angle = TWO_PI / (pl*reps);
-  spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
-    float a = 0;
-    float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
-    for (int i = 0; i < reps; i ++) {
-
-      for (int pcount = lowIndex; pcount < highIndex; pcount++) {
-        pushMatrix();
-        if (i%2 == 0) {
-          rotateZ(a+angle*pcount + spokeAngle);
-        } else {
-          rotateZ(a+angle*(pl-pcount-1) + spokeAngle);
-        }
-
-        for (int j = 0; j < spec[1][pcount]; j++) {
-          float alph = alpha(bandColor);
-          //this break clause removes the trailing black boxes when a particular note has been sustained for a while
-          if (alph-j <= 0) { 
-            break;
-          }
-          stroke(lerpColor(calcColor(pcount), color(red(bandColor), blue(bandColor), green(bandColor), alph-j), .75f-.25f*sin(millis()*.002f)));
-          rect(0, s+i_rad + j*bar_height, s, s*2/3);
-        }
-        popMatrix();
-      }
-
-      a+= TWO_PI/PApplet.parseFloat(reps);
-    }
-    popMatrix();
   }
 }
   public void settings() {  fullScreen(P3D); }

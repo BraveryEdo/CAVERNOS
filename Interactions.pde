@@ -1,13 +1,18 @@
-//global variables
-boolean spotlightBars = false;
+//global toggleable variables
+
+boolean shpereBarsDupelicateMode = false;
+boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
 float menu = millis();
 String specDispMode = "off";
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
-float ringW = 350;
-float step = 1.618;
+
+int BGDotPattern = 0;
+
+String snailMode = "disabled";
+String[] snailModes = {"disabled", "line"};
 
 boolean test = false;
 
@@ -22,25 +27,14 @@ void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
       println("UP arrow key");
-      ringW += step;
+    
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
-      ringW -= step;
-      if (ringW < 0) { 
-        ringW+=step;
-      }
     } else if (keyCode == CONTROL) {
       menu = millis();
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
-    }
-  } else if (key == '9') {
-    spotlightBars = !spotlightBars;
-    if (spotlightBars) {
-      println("spotlightBars enabled");
-    } else {
-      println("spotlightBars disabled");
     }
   } else if (key == '0') {
     if (specDispMode != "off") {
@@ -91,8 +85,8 @@ void keyPressed() {
       println("expanding spec mode already enabled");
     }
   } else if (key == '4') {
-    BGPattern = (BGPattern + 1)%6;
-    println("BGPattern switched to: " + BGPattern);
+    BGDotPattern = (BGDotPattern + 1)%6;
+    println("BGPattern switched to: " + BGDotPattern);
   } else if (key == '5') {
     if (ringDisplay) {
       println("eqRing, outer edge disabled");
@@ -107,15 +101,18 @@ void keyPressed() {
       println("shpereBarsDupelicateMode enabled");
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
-  } else if (key == 'w') {
+  } else if (key == '7') {
+    snailMode = snailModes[(Arrays.asList(snailModes).indexOf(snailMode)+1)%snailModes.length];
+    println("snailMode set to: " + snailMode);
+  } else if (key == '8') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
-  } else if (key == 'r') {
-    ringWave = !ringWave;
-    if (ringWave) {
-      println("ringWave enabled");
+  } else if (key == '9') {
+    sphereBars = !sphereBars;
+    if (sphereBars) {
+      println("sphereBars enabled");
     } else {
-      println("ringWave disabled");
+      println("sphereBars disabled");
     }
   } else {
     println("unhandled key: " + key);

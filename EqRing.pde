@@ -1,12 +1,11 @@
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[5];
-    subEffects[0] = new BackgroundPattern(size, offset, hzMult, type, h);
+    subEffects = new Effect[4];
+    subEffects[0] = new BackgroundPatterns(size, offset, hzMult, type, h);
     subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SpotlightBarsEffect(size, offset, hzMult, type, h);
-    subEffects[3] = new SphereBars(size, offset, hzMult, type, h);
-    subEffects[4] = new Lazer(size, offset, hzMult, type, h);
+    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[3] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -28,7 +27,7 @@ public class EqRing extends Effect {
     color[] c = cp.getColors();
     color current = c[colorIndex];
     float t = millis();
-    float gmax = spec[1][maxIndex];
+    float gmax = ap.gMaxIntensity;
     float s = sin((t)*.0002);
 
     float o_rot = -.75*s;
@@ -37,12 +36,10 @@ public class EqRing extends Effect {
 
     stroke(current);
 
-    if (spotlightBars) {
+    if (sphereBars) {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
-    } else {
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
-
+    
     if (ringDisplay && gmax > 35) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
@@ -53,7 +50,7 @@ public class EqRing extends Effect {
     } 
 
     if (gmax > 30) {
-      subEffects[4].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
     }
     if (ringDisplay && gmax >50) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);
@@ -103,9 +100,7 @@ public class EqRing extends Effect {
   }
 
   void waveForm(float x, float y, float h, float rx, float ry, float rz) {
-    int wDepth = sorted[1].length/10;
-    //full spectrum additive waveform
-    if (waveForm == waveTypes[0]) {
+    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/10;
       //additive
       color[] c = cp.getColors();
       color current = c[colorIndex];
@@ -119,42 +114,41 @@ public class EqRing extends Effect {
       float hScale = h/max(max, 1);
       PShape s = createShape();
       s.beginShape();
-      s.stroke(current);
+      s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
       s.strokeWeight(1);
       s.noFill();
       s.beginShape();
       s.curveVertex(0, 0);
-      float decider = random(100);
-      float wScale =1;
-      if (decider < 33) {
-        //progresses through freqs based on time
-        wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
-      } else if (decider < 80) {
-        //use loudest third
-        wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002)))+1), 1);
-      } else {
-        //use mid third
-        wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
-      }
+      float wScale = max((sorted[1][floor(wDepth)]), 1);
+
+      //float decider = random(100);
+      //if (decider < 33) {
+      //  //progresses through freqs based on time
+      //  wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
+      //} else if (decider < 80) {
+      //  //use loudest third
+        //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002)))+1), 1);
+      //} else {
+      //  //use mid third
+      //  wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
+      //}
       float maxWaveH = 0;
-      for (float i = 0; i < width; i+= wScale) {
+      for (float i = 0; i < width+wScale; i+= wScale) {
         float adder = 0;
         for (int j = 0; j < wDepth; j++) {
           float jHz = hzMult * (sorted[1][j] * size + offset);
           adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
         }
-        s.curveVertex(i/**wScale*/, adder/(sorted[1].length/4));
-        maxWaveH = max(maxWaveH, adder/(sorted[1].length/4));
+        s.curveVertex(i/**wScale*/, adder/wDepth);
+        maxWaveH = max(maxWaveH, adder/wDepth);
       }
       s.curveVertex(width, 0);
       s.endShape();
-      if (maxWaveH > 5) {
+      if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
         shape(s, 0, 0);
       }
       popMatrix();
-    } else if (waveForm == waveTypes[1]) {//simple additive wave form using top 4 significant frequencies
     
-    }
   }
 
 

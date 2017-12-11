@@ -14,8 +14,6 @@ int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
 int logicRate = 1000;
-int BGPattern = 0;
-boolean shpereBarsDupelicateMode = false;
 
 void setup() {
   loading++;
@@ -45,7 +43,7 @@ void draw() {
       textAlign(CENTER);
       textSize(32);
       fill(255-(millis()-menu)/25);
-      text("Controls: 0,1,2,3,4,5, 6, 9, and w", width/2.0, height/4.0);
+      text("Controls: 0,1,2,3,4,5,6,7,8,9", width/2.0, height/4.0);
       //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
     }
   }
@@ -60,12 +58,15 @@ void showStats() {
     textSize(24);
     fill(255);
     text("TEST" + "\n" + 
-    "spotlightBars: " + spotlightBars + "\n" +
+    "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
     "specDispMode: " + specDispMode + "\n" +
     "waveForm: " + waveForm + "\n" +
+    "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
+    "snailMode: " + snailMode +"\n" + 
+    "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
-    "gMaxIntensity: " + ap.gMaxIntensity
+    "gMaxIntensity: " + ap.gMaxIntensity 
     , 50, 50);
 }

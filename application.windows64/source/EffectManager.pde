@@ -114,10 +114,10 @@ public class EffectManager {
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       break;
     case "default":
-      e = new pixieVis(size, offset, hzMult, effectName, histLen);
+      e = new inkBlot(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new pixieVis(size, offset, hzMult, effectName, histLen);
+      e = new inkBlot(size, offset, hzMult, effectName, histLen);
       break;
     }
   }
