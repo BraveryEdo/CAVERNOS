@@ -1,11 +1,10 @@
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[3];
     subEffects[0] = new BackgroundPatterns(size, offset, hzMult, type, h);
-    subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
-    subEffects[3] = new Lazer(size, offset, hzMult, type, h);
+    subEffects[1] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[2] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -37,7 +36,7 @@ public class EqRing extends Effect {
     stroke(current);
 
     if (sphereBars) {
-      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
     
     if (ringDisplay && gmax > 35) {
@@ -50,7 +49,7 @@ public class EqRing extends Effect {
     } 
 
     if (gmax > 30) {
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
     if (ringDisplay && gmax >50) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);

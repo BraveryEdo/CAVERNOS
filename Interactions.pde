@@ -11,8 +11,8 @@ String waveForm = waveTypes[0];
 
 int BGDotPattern = 0;
 
-String snailMode = "disabled";
-String[] snailModes = {"disabled", "line"};
+String particleMode = "disabled";
+String[] particleModes = {"disabled", "perlinLines", "waveReactive"};
 
 boolean test = false;
 
@@ -102,8 +102,8 @@ void keyPressed() {
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
   } else if (key == '7') {
-    snailMode = snailModes[(Arrays.asList(snailModes).indexOf(snailMode)+1)%snailModes.length];
-    println("snailMode set to: " + snailMode);
+    particleMode = particleModes[(Arrays.asList(particleModes).indexOf(particleMode)+1)%particleModes.length];
+    println("snailMode set to: " + particleMode);
   } else if (key == '8') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);

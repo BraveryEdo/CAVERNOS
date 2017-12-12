@@ -51,22 +51,26 @@ public class BackgroundPatterns extends Effect {
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     dots();
-    if (!snailMode.equals("disabled")) {
-      snailTrail();
+    if (particleMode.equals("waveReactive")) {
+    } else if (particleMode.equals("perlinLines")) {
+      particleLineEffect();
       snailReset = false;
     } else if (snailReset == false) {
       snailInit();
     }
+
+
+    image(bg, 0, 0);
   }
 
   void dots() {
-    float gMax = ap.gMaxIntensity;
 
     if (width/2.0/dotsGridSize != pointSizes.length || height/2.0/dotsGridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
     }
     float tAvgBri = 0;
+    float gMax = ap.gMaxIntensity;
 
     bg.beginDraw();
     bg.clear();
@@ -149,16 +153,23 @@ public class BackgroundPatterns extends Effect {
       }
     }
     bg.endDraw();
-    image(bg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
   }
 
-  void snailTrail() {
+  void waveReactive() {
     bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
     bg.colorMode(RGB);
- 
 
-    float t = millis()*.0000142857;
+    bg.endDraw();
+  }
+  void particleLineEffect() {
+    bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
+    bg.colorMode(RGB);
+
+
+    float t = (millis()*.0000142857);
     for (int n = 0; n < numParticles; n++) {
       float[] p = particles[n];
 
@@ -170,20 +181,21 @@ public class BackgroundPatterns extends Effect {
       bg.strokeWeight(1);
 
       float perl = noise(oldX*snailNoisescale, oldY*snailNoisescale, t+perlinOffset)*360;
-      
+
       float newX = oldX + 7*sin(perl);
       float newY = oldY + 7*cos(perl);
 
-      if (newX < -15) {
-
+      if (newX < -5) {
         explodeLine(0, oldY);
-
         oldX = newX = width/2.0;//random(width/2.0);
         oldY = newY = random(height/2.0);
       } else if (newX > width/2.0) {
         oldX = newX = 0;//random(width/2.0);
         oldY = newY = random(height/2.0);
-      } else if (newY < -15) {
+      } else if (newY < -5) {
+        oldX = newX = random(width/2.0);
+        oldY = newY = height/2.0;
+      } else if (newY-5 > height) {
         oldX = newX = random(width/2.0);
         oldY = newY = height/2.0;
       }

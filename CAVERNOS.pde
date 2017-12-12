@@ -57,14 +57,14 @@ void showStats() {
      textAlign(LEFT);
     textSize(24);
     fill(255);
-    text("TEST" + "\n" + 
+    text("STATUS" + "\n" + 
     "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
     "specDispMode: " + specDispMode + "\n" +
     "waveForm: " + waveForm + "\n" +
     "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
-    "snailMode: " + snailMode +"\n" + 
+    "snailMode: " + particleMode +"\n" + 
     "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
     "gMaxIntensity: " + ap.gMaxIntensity 
