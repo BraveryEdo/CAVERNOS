@@ -9,10 +9,16 @@ public class BackgroundPatterns extends Effect {
   float dotsGridSize = 25;
 
   //snailTrail
+
+  int numParticles = 1024;
   float[][] particles;
+  float particleAvgX = 0;
+  float avgXSpeed = MAX_FLOAT;
+  float lastSwitch = millis();
+  String[] autoModes;
+  String localMode = particleModes[0];
   float snailNoisescale = 0.000142857;
   float snailGridSize = 5;
-  int numParticles = 700;
   boolean snailReset = false;
   float perlinOffset = random(99999);
 
@@ -28,6 +34,17 @@ public class BackgroundPatterns extends Effect {
     zPos = new float[ceil((width/2.0)/dotsGridSize)][ceil((height/2.0)/dotsGridSize)];
 
     particles = new float[numParticles][2];
+
+    autoModes = new String[particleModes.length-1];
+    int c = 0;
+    for (int i  = 0; i < particleModes.length; i++) {
+      String mode = particleModes[i];
+      if (mode != "auto") {
+        autoModes[c] = mode;
+        c++;
+      }
+    }
+
     snailInit();
   }
 
@@ -51,22 +68,30 @@ public class BackgroundPatterns extends Effect {
 
   void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     dots();
-    if (!snailMode.equals("disabled")) {
-      snailTrail();
+    if (particleMode.equals("waveReactive")) {
+      waveReactive();
       snailReset = false;
+    } else if (particleMode.equals("perlinLines")) {
+      particleLineEffect();
+      snailReset = false;
+    } else if (particleMode.equals("auto")) {
+      particleAutoSwitcher();
     } else if (snailReset == false) {
       snailInit();
     }
+
+
+    image(bg, 0, 0);
   }
 
   void dots() {
-    float gMax = ap.gMaxIntensity;
 
     if (width/2.0/dotsGridSize != pointSizes.length || height/2.0/dotsGridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
     }
     float tAvgBri = 0;
+    float gMax = ap.gMaxIntensity;
 
     bg.beginDraw();
     bg.clear();
@@ -149,16 +174,100 @@ public class BackgroundPatterns extends Effect {
       }
     }
     bg.endDraw();
-    image(bg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
   }
 
-  void snailTrail() {
-    bg.beginDraw();
-    bg.colorMode(RGB);
- 
+  void particleAutoSwitcher() {
+    if (localMode.equals("waveReactive")) {
+      waveReactive();
+      snailReset = false;
+    } else if (localMode.equals("perlinLines")) {
+      particleLineEffect();
+      snailReset = false;
+    } else if (localMode.equals("disabled") && snailReset == false) {
+      snailInit();
+    }
+    if (avgXSpeed < 5 || particleAvgX < width/(2.0*fakePI) || particleAvgX > width/2.0 - width/(2.0*fakePI)) {
+      particleLineEffect();
+    } else {
+      waveReactive();
+    }
+  }
 
-    float t = millis()*.0000142857;
+  void waveReactive() {
+    bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
+    bg.colorMode(RGB);
+
+    float t = (millis()*.0000142857);
+
+    ArrayList<Float> zeros = new ArrayList<Float>();
+
+    float wScale = max(sorted[1][1], sorted[1][0], width/50.0);
+    int wDepth = 7;
+    float max = ap.gMaxIntensity;
+    float hScale = 1/max(max, 1);
+    for (float i = 0; i < width/2.0+wScale; i+= wScale) {
+      float adder = 0;
+      for (int j = 0; j < wDepth; j++) {
+        float jHz = hzMult * (sorted[1][j] * size + offset);
+        adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
+      }
+      if (abs(adder) < .07) {
+        zeros.add(i);
+      }
+    }
+    if (zeros.size() == 0) { 
+      zeros.add(0.0);
+    }
+    particleAvgX = 0;
+    avgXSpeed = 0;
+    for (int n = 0; n < numParticles; n++) {
+      float[] p = particles[n];
+
+      float oldX = p[0];
+      float oldY = p[1];
+
+      float closestZero = zeros.get(getClosest(oldX, zeros));
+
+
+      bg.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
+      bg.fill(picked);
+      bg.strokeWeight(1);
+
+      float dir = (closestZero < oldX)? -1 : 1;
+
+      float noiseD = fakePI*sin(t)*noise(t);
+      float newX = oldX + dir*max(.35*abs(closestZero-oldX), noiseD, fakePI);
+      float newY = oldY + noiseD;
+
+      if (newX < 2 || newX > width/2.0 - 2 || newY - 5 > height || newY < -5 ) {
+        oldX = newX = random(width/2.0);
+        oldY = newY = random(height/2.0);
+      }
+
+      particles[n][0] = newX;
+      particles[n][1] = newY;
+      particleAvgX += newX;
+      avgXSpeed += abs(oldX-newX);
+      bg.line(oldX, oldY, newX, newY);
+      bg.line(width - oldX, oldY, width - newX, newY);
+      bg.line(oldX, height - oldY, newX, height - newY);
+      bg.line(width - oldX, height - oldY, width - newX, height - newY);
+    }
+    particleAvgX /= numParticles;
+    avgXSpeed /= numParticles;
+    bg.endDraw();
+  }
+  void particleLineEffect() {
+    bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
+    bg.colorMode(RGB);
+
+      
+    float t = (millis()*.0000142857);
+    particleAvgX = 0;
+    avgXSpeed = MAX_FLOAT;
     for (int n = 0; n < numParticles; n++) {
       float[] p = particles[n];
 
@@ -170,24 +279,25 @@ public class BackgroundPatterns extends Effect {
       bg.strokeWeight(1);
 
       float perl = noise(oldX*snailNoisescale, oldY*snailNoisescale, t+perlinOffset)*360;
-      
+
       float newX = oldX + 7*sin(perl);
       float newY = oldY + 7*cos(perl);
 
-      if (newX < -15) {
-
+      if (newX < -5) {
         explodeLine(0, oldY);
-
         oldX = newX = width/2.0;//random(width/2.0);
         oldY = newY = random(height/2.0);
       } else if (newX > width/2.0) {
         oldX = newX = 0;//random(width/2.0);
         oldY = newY = random(height/2.0);
-      } else if (newY < -15) {
+      } else if (newY < -5) {
+        oldX = newX = random(width/2.0);
+        oldY = newY = height/2.0;
+      } else if (newY-5 > height) {
         oldX = newX = random(width/2.0);
         oldY = newY = height/2.0;
       }
-
+      particleAvgX += newX;
       particles[n][0] = newX;
       particles[n][1] = newY;
       //if (snailMode.equals("dot")) {
@@ -203,7 +313,7 @@ public class BackgroundPatterns extends Effect {
       bg.line(oldX, height - oldY, newX, height - newY);
       bg.line(width - oldX, height - oldY, width - newX, height - newY);
     }
-
+    particleAvgX /= numParticles;
     bg.endDraw();
     image(bg, 0, 0);
   }
@@ -221,5 +331,21 @@ public class BackgroundPatterns extends Effect {
 
     bg.ellipse(x, height-y, 5, 5);
     line(x, height-y, (x+spike), height-y);
+  }
+
+  int getClosest(float point, ArrayList<Float> zeros) {
+    float dist = MAX_FLOAT;
+    int bestIndex = 0;
+
+    for (int i = 0; i < zeros.size()-1; i++) {
+      float tDist = abs(point - zeros.get(i));
+      if (tDist < dist) {
+        dist = tDist;
+        bestIndex = i;
+      } else {
+        break;
+      }
+    }
+    return bestIndex;
   }
 }

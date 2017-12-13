@@ -1,4 +1,4 @@
-public class inkBlot extends Effect {
+public class InkBlot extends Effect {
 
   boolean mirrored = false;
   float spread = 0;
@@ -7,8 +7,8 @@ public class inkBlot extends Effect {
   boolean shapeTrailInUse;
   float offset;
 
-  inkBlot(int size, int offset, float hzMult, String type, int h) {
-    super("default", type, size, offset, hzMult, h);
+  InkBlot(int size, int offset, float hzMult, String type, int h) {
+    super("inkBlot", type, size, offset, hzMult, h);
     offset = cp.getIndex(type)*7000;
     offset += millis()*PI;
 
@@ -87,7 +87,7 @@ public class inkBlot extends Effect {
             if (val > cutoff) {
               float ratio = 200.0*val/cutoff;
               noStroke();
-              fill(cp.setAlpha(c, floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
+              fill(cp.setAlpha(c, 22+floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
               pushMatrix();
               translate(0, 0, ratio/50.0+1);
               //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);

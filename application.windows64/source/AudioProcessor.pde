@@ -110,7 +110,7 @@ public class AudioProcessor {
     bands[3] = upper;
     bands[4] = high;
     bands[5] = all;
-    
+
 
 
     logicThread.start();
@@ -123,10 +123,10 @@ public class AudioProcessor {
     for (Band b : bands) {
 
       if (b.name == "all") {
-        b .display(0,0,width,height);
-      } else if (specDispMode == "default") {
+        b .display(0, 0, width, height);
+      } else if (specDispMode == "inkBlot") {
         b.display(0, 0, width, height);
-      } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
+      } else if (specDispMode == "mirrored") {
         float x = width/2.0;
         float w = height/(ap.bands.length-1);
         float y = height-w*(c+.5);
@@ -137,9 +137,6 @@ public class AudioProcessor {
       }
       c++;
     }
-    
-
-
   }
 
 
@@ -236,7 +233,7 @@ public class AudioProcessor {
           avg += left_bin+mix_bin+right_bin;
         }
         avg /= (3* specSize);
-        
+
 
         if (max > 100) {
           //println(max);
@@ -246,13 +243,13 @@ public class AudioProcessor {
               magnitude[j][i] *= scale;
             }
           }
-        //} else if (max < 60 && avg > 10) {
-        //  for (int i = 0; i < specSize; i++) {
-        //    float scale = 100.0/(max-min);
-        //    for (int j = 0; j < magnitude.length; j++) {
-        //      magnitude[j][i] *= scale;
-        //    }
-        //  }
+          //} else if (max < 60 && avg > 10) {
+          //  for (int i = 0; i < specSize; i++) {
+          //    float scale = 100.0/(max-min);
+          //    for (int j = 0; j < magnitude.length; j++) {
+          //      magnitude[j][i] *= scale;
+          //    }
+          //  }
         } else if ( max < 20 && max > 5) {
           for (int i = 0; i < specSize; i++) {
             float scale = 50.0/(max-min);
@@ -300,17 +297,17 @@ public class AudioProcessor {
         upper.stream(upper2);
         high.stream(high2);
         all.stream(all2);
-        
+
         int maxInt = 1;
         for (int i  = 1; i < bands.length-1; i++) {
-          if(bands[i].maxIntensity >  bands[maxInt].maxIntensity){
+          if (bands[i].maxIntensity >  bands[maxInt].maxIntensity) {
             maxInt = i;
           }
         }
 
         mostIntenseBand = bands[maxInt].getName();
         gMaxIntensity = bands[maxInt].maxIntensity;
-        
+
         //------------
         //framelimiter
         int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;

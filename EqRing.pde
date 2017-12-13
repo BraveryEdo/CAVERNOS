@@ -118,7 +118,7 @@ public class EqRing extends Effect {
       s.noFill();
       s.beginShape();
       s.curveVertex(0, 0);
-      float wScale = max((sorted[1][floor(wDepth)]), 1);
+      float wScale = max((sorted[1][0]), 1);
 
       //float decider = random(100);
       //if (decider < 33) {

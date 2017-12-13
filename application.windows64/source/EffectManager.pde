@@ -104,20 +104,14 @@ public class EffectManager {
 
   protected void switchEffect(String newName) {
     switch(newName) {
-    case "expanding":
-      e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
-      break;
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       break;
-    case "mirroredALL":
-      e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      break;
-    case "default":
-      e = new inkBlot(size, offset, hzMult, effectName, histLen);
+    case "inkBlot":
+      e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new inkBlot(size, offset, hzMult, effectName, histLen);
+      e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;
     }
   }

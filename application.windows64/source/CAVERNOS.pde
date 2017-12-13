@@ -1,4 +1,4 @@
-import java.util.Arrays;
+ import java.util.Arrays;
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 import static java.awt.event.KeyEvent.*;
@@ -54,17 +54,21 @@ void draw() {
 }
 
 void showStats() {
-     textAlign(LEFT);
+    stroke(255);
+    fill(128,128,128,128);//lerpColor(cp.getPrev("all"), color(128,128,128,128), .5));
+    rect(25,25, width/3.0, height/1.5);
+    textAlign(LEFT);
     textSize(24);
     fill(255);
-    text("TEST" + "\n" + 
+    text("STATUS" + "\n" + 
     "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
     "specDispMode: " + specDispMode + "\n" +
+    "lazerMode: " + lazerMode + "\n" +
     "waveForm: " + waveForm + "\n" +
     "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
-    "snailMode: " + snailMode +"\n" + 
+    "snailMode: " + particleMode +"\n" + 
     "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
     "gMaxIntensity: " + ap.gMaxIntensity 

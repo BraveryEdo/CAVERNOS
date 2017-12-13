@@ -4,16 +4,17 @@ boolean shpereBarsDupelicateMode = false;
 boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
+boolean lazerMode = true;
 float menu = millis();
-String specDispMode = "off";
+String[] specModes = {"off", "mirrored", "inkBlot"};
+String specDispMode = specModes[0];
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 
-int BGDotPattern = 0;
+int BGDotPattern = 1;
 
-String snailMode = "disabled";
-String[] snailModes = {"disabled", "line"};
-
+String[] particleModes = {"auto", "perlinLines", "waveReactive", "disabled"};
+String particleMode = particleModes[0];
 boolean test = false;
 
 void mouseClicked(MouseEvent e) {
@@ -27,7 +28,6 @@ void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
       println("UP arrow key");
-    
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
     } else if (keyCode == CONTROL) {
@@ -44,46 +44,28 @@ void keyPressed() {
           b.effectManager.switchEffect(specDispMode);
         }
       }
-      println("spec display turned off");
+      println("specDispMode turned off");
     } else {
-      println("spec display turned off");
+      println("specDispMode turned off");
     }
   } else if (key  == '1') {
-    if (specDispMode != "default") {
-      specDispMode = "default";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
+    specDispMode = specModes[(Arrays.asList(specModes).indexOf(specDispMode)+1)%specModes.length];
+    for (Band b : ap.bands) {
+      if (b.name != "all") {
+        b.effectManager.switchEffect(specDispMode);
       }
-      println("default spec mode");
-    } else {
-      println("default spec mode already enabled");
     }
+    println("specDispMode set to: " + specDispMode);
   } else if (key == '2') {
-    if (specDispMode != "mirrored") {
-      specDispMode = "mirrored";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("mirrored spec mode");
+    lazerMode = !lazerMode;
+    if (lazerMode) {
+      println("lazerMode enabled");
     } else {
-      println("mirrored spec mode already enabled");
+      println("lazerMode disabled");
     }
   } else if (key == '3') {
-    if (specDispMode != "expanding") {
-      specDispMode = "expanding";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("expanding spec mode");
-    } else {
-      println("expanding spec mode already enabled");
-    }
+    particleMode = particleModes[0];
+    println("particleMode set to: " + particleMode);
   } else if (key == '4') {
     BGDotPattern = (BGDotPattern + 1)%6;
     println("BGPattern switched to: " + BGDotPattern);
@@ -102,8 +84,11 @@ void keyPressed() {
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
   } else if (key == '7') {
-    snailMode = snailModes[(Arrays.asList(snailModes).indexOf(snailMode)+1)%snailModes.length];
-    println("snailMode set to: " + snailMode);
+    particleMode = particleModes[(Arrays.asList(particleModes).indexOf(particleMode)+1)%particleModes.length];
+    if (particleMode == "disabled") { 
+      particleMode = particleModes[0];
+    }
+    println("particleMode set to: " + particleMode);
   } else if (key == '8') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);

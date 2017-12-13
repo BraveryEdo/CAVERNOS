@@ -19,7 +19,7 @@ import java.io.IOException;
 
 public class CAVERNOS extends PApplet {
 
-
+ 
 
 
 
@@ -75,17 +75,21 @@ public void draw() {
 }
 
 public void showStats() {
-     textAlign(LEFT);
+    stroke(255);
+    fill(128,128,128,128);//lerpColor(cp.getPrev("all"), color(128,128,128,128), .5));
+    rect(25,25, width/3.0f, height/1.5f);
+    textAlign(LEFT);
     textSize(24);
     fill(255);
-    text("TEST" + "\n" + 
+    text("STATUS" + "\n" + 
     "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
     "specDispMode: " + specDispMode + "\n" +
+    "lazerMode: " + lazerMode + "\n" +
     "waveForm: " + waveForm + "\n" +
     "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
-    "snailMode: " + snailMode +"\n" + 
+    "snailMode: " + particleMode +"\n" + 
     "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
     "gMaxIntensity: " + ap.gMaxIntensity 
@@ -203,7 +207,7 @@ public class AudioProcessor {
     bands[3] = upper;
     bands[4] = high;
     bands[5] = all;
-    
+
 
 
     logicThread.start();
@@ -216,10 +220,10 @@ public class AudioProcessor {
     for (Band b : bands) {
 
       if (b.name == "all") {
-        b .display(0,0,width,height);
-      } else if (specDispMode == "default") {
+        b .display(0, 0, width, height);
+      } else if (specDispMode == "inkBlot") {
         b.display(0, 0, width, height);
-      } else if (specDispMode == "mirrored" || specDispMode == "expanding") {
+      } else if (specDispMode == "mirrored") {
         float x = width/2.0f;
         float w = height/(ap.bands.length-1);
         float y = height-w*(c+.5f);
@@ -230,9 +234,6 @@ public class AudioProcessor {
       }
       c++;
     }
-    
-
-
   }
 
 
@@ -329,7 +330,7 @@ public class AudioProcessor {
           avg += left_bin+mix_bin+right_bin;
         }
         avg /= (3* specSize);
-        
+
 
         if (max > 100) {
           //println(max);
@@ -339,13 +340,13 @@ public class AudioProcessor {
               magnitude[j][i] *= scale;
             }
           }
-        //} else if (max < 60 && avg > 10) {
-        //  for (int i = 0; i < specSize; i++) {
-        //    float scale = 100.0/(max-min);
-        //    for (int j = 0; j < magnitude.length; j++) {
-        //      magnitude[j][i] *= scale;
-        //    }
-        //  }
+          //} else if (max < 60 && avg > 10) {
+          //  for (int i = 0; i < specSize; i++) {
+          //    float scale = 100.0/(max-min);
+          //    for (int j = 0; j < magnitude.length; j++) {
+          //      magnitude[j][i] *= scale;
+          //    }
+          //  }
         } else if ( max < 20 && max > 5) {
           for (int i = 0; i < specSize; i++) {
             float scale = 50.0f/(max-min);
@@ -393,17 +394,17 @@ public class AudioProcessor {
         upper.stream(upper2);
         high.stream(high2);
         all.stream(all2);
-        
+
         int maxInt = 1;
         for (int i  = 1; i < bands.length-1; i++) {
-          if(bands[i].maxIntensity >  bands[maxInt].maxIntensity){
+          if (bands[i].maxIntensity >  bands[maxInt].maxIntensity) {
             maxInt = i;
           }
         }
 
         mostIntenseBand = bands[maxInt].getName();
         gMaxIntensity = bands[maxInt].maxIntensity;
-        
+
         //------------
         //framelimiter
         int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
@@ -424,6 +425,7 @@ public class AudioProcessor {
   }
   );
 }
+
 public class BackgroundPatterns extends Effect {
   PGraphics bg;
 
@@ -435,10 +437,16 @@ public class BackgroundPatterns extends Effect {
   float dotsGridSize = 25;
 
   //snailTrail
+
+  int numParticles = 1024;
   float[][] particles;
+  float particleAvgX = 0;
+  float avgXSpeed = MAX_FLOAT;
+  float lastSwitch = millis();
+  String[] autoModes;
+  String localMode = particleModes[0];
   float snailNoisescale = 0.000142857f;
   float snailGridSize = 5;
-  int numParticles = 700;
   boolean snailReset = false;
   float perlinOffset = random(99999);
 
@@ -454,6 +462,17 @@ public class BackgroundPatterns extends Effect {
     zPos = new float[ceil((width/2.0f)/dotsGridSize)][ceil((height/2.0f)/dotsGridSize)];
 
     particles = new float[numParticles][2];
+
+    autoModes = new String[particleModes.length-1];
+    int c = 0;
+    for (int i  = 0; i < particleModes.length; i++) {
+      String mode = particleModes[i];
+      if (mode != "auto") {
+        autoModes[c] = mode;
+        c++;
+      }
+    }
+
     snailInit();
   }
 
@@ -477,22 +496,30 @@ public class BackgroundPatterns extends Effect {
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
     dots();
-    if (!snailMode.equals("disabled")) {
-      snailTrail();
+    if (particleMode.equals("waveReactive")) {
+      waveReactive();
       snailReset = false;
+    } else if (particleMode.equals("perlinLines")) {
+      particleLineEffect();
+      snailReset = false;
+    } else if (particleMode.equals("auto")) {
+      particleAutoSwitcher();
     } else if (snailReset == false) {
       snailInit();
     }
+
+
+    image(bg, 0, 0);
   }
 
   public void dots() {
-    float gMax = ap.gMaxIntensity;
 
     if (width/2.0f/dotsGridSize != pointSizes.length || height/2.0f/dotsGridSize != pointSizes[0].length) { 
       init();
       println("!!!!!!!!!! resize detected !!!!!!!!!!!!");
     }
     float tAvgBri = 0;
+    float gMax = ap.gMaxIntensity;
 
     bg.beginDraw();
     bg.clear();
@@ -575,16 +602,100 @@ public class BackgroundPatterns extends Effect {
       }
     }
     bg.endDraw();
-    image(bg, 0, 0);
     avgBri = tAvgBri/(pointSizes.length*pointSizes[0].length);
   }
 
-  public void snailTrail() {
-    bg.beginDraw();
-    bg.colorMode(RGB);
- 
+  public void particleAutoSwitcher() {
+    if (localMode.equals("waveReactive")) {
+      waveReactive();
+      snailReset = false;
+    } else if (localMode.equals("perlinLines")) {
+      particleLineEffect();
+      snailReset = false;
+    } else if (localMode.equals("disabled") && snailReset == false) {
+      snailInit();
+    }
+    if (avgXSpeed < 5 || particleAvgX < width/(2.0f*fakePI) || particleAvgX > width/2.0f - width/(2.0f*fakePI)) {
+      particleLineEffect();
+    } else {
+      waveReactive();
+    }
+  }
 
-    float t = millis()*.0000142857f;
+  public void waveReactive() {
+    bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
+    bg.colorMode(RGB);
+
+    float t = (millis()*.0000142857f);
+
+    ArrayList<Float> zeros = new ArrayList<Float>();
+
+    float wScale = max(sorted[1][1], sorted[1][0], width/50.0f);
+    int wDepth = 7;
+    float max = ap.gMaxIntensity;
+    float hScale = 1/max(max, 1);
+    for (float i = 0; i < width/2.0f+wScale; i+= wScale) {
+      float adder = 0;
+      for (int j = 0; j < wDepth; j++) {
+        float jHz = hzMult * (sorted[1][j] * size + offset);
+        adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
+      }
+      if (abs(adder) < .07f) {
+        zeros.add(i);
+      }
+    }
+    if (zeros.size() == 0) { 
+      zeros.add(0.0f);
+    }
+    particleAvgX = 0;
+    avgXSpeed = 0;
+    for (int n = 0; n < numParticles; n++) {
+      float[] p = particles[n];
+
+      float oldX = p[0];
+      float oldY = p[1];
+
+      float closestZero = zeros.get(getClosest(oldX, zeros));
+
+
+      bg.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
+      bg.fill(picked);
+      bg.strokeWeight(1);
+
+      float dir = (closestZero < oldX)? -1 : 1;
+
+      float noiseD = fakePI*sin(t)*noise(t);
+      float newX = oldX + dir*max(.35f*abs(closestZero-oldX), noiseD, fakePI);
+      float newY = oldY + noiseD;
+
+      if (newX < 2 || newX > width/2.0f - 2 || newY - 5 > height || newY < -5 ) {
+        oldX = newX = random(width/2.0f);
+        oldY = newY = random(height/2.0f);
+      }
+
+      particles[n][0] = newX;
+      particles[n][1] = newY;
+      particleAvgX += newX;
+      avgXSpeed += abs(oldX-newX);
+      bg.line(oldX, oldY, newX, newY);
+      bg.line(width - oldX, oldY, width - newX, newY);
+      bg.line(oldX, height - oldY, newX, height - newY);
+      bg.line(width - oldX, height - oldY, width - newX, height - newY);
+    }
+    particleAvgX /= numParticles;
+    avgXSpeed /= numParticles;
+    bg.endDraw();
+  }
+  public void particleLineEffect() {
+    bg.beginDraw();
+    //don't clear, already contains bg dots. just draw on top
+    bg.colorMode(RGB);
+
+      
+    float t = (millis()*.0000142857f);
+    particleAvgX = 0;
+    avgXSpeed = MAX_FLOAT;
     for (int n = 0; n < numParticles; n++) {
       float[] p = particles[n];
 
@@ -596,24 +707,25 @@ public class BackgroundPatterns extends Effect {
       bg.strokeWeight(1);
 
       float perl = noise(oldX*snailNoisescale, oldY*snailNoisescale, t+perlinOffset)*360;
-      
+
       float newX = oldX + 7*sin(perl);
       float newY = oldY + 7*cos(perl);
 
-      if (newX < -15) {
-
+      if (newX < -5) {
         explodeLine(0, oldY);
-
         oldX = newX = width/2.0f;//random(width/2.0);
         oldY = newY = random(height/2.0f);
       } else if (newX > width/2.0f) {
         oldX = newX = 0;//random(width/2.0);
         oldY = newY = random(height/2.0f);
-      } else if (newY < -15) {
+      } else if (newY < -5) {
+        oldX = newX = random(width/2.0f);
+        oldY = newY = height/2.0f;
+      } else if (newY-5 > height) {
         oldX = newX = random(width/2.0f);
         oldY = newY = height/2.0f;
       }
-
+      particleAvgX += newX;
       particles[n][0] = newX;
       particles[n][1] = newY;
       //if (snailMode.equals("dot")) {
@@ -629,7 +741,7 @@ public class BackgroundPatterns extends Effect {
       bg.line(oldX, height - oldY, newX, height - newY);
       bg.line(width - oldX, height - oldY, width - newX, height - newY);
     }
-
+    particleAvgX /= numParticles;
     bg.endDraw();
     image(bg, 0, 0);
   }
@@ -648,7 +760,24 @@ public class BackgroundPatterns extends Effect {
     bg.ellipse(x, height-y, 5, 5);
     line(x, height-y, (x+spike), height-y);
   }
+
+  public int getClosest(float point, ArrayList<Float> zeros) {
+    float dist = MAX_FLOAT;
+    int bestIndex = 0;
+
+    for (int i = 0; i < zeros.size()-1; i++) {
+      float tDist = abs(point - zeros.get(i));
+      if (tDist < dist) {
+        dist = tDist;
+        bestIndex = i;
+      } else {
+        break;
+      }
+    }
+    return bestIndex;
+  }
 }
+
   public class Band {
 
   private String name;
@@ -1046,110 +1175,6 @@ public class ColorPicker {
   //  return lerpColor(colorChart[(index - 1)%colorChart.length], colorChart[index%colorChart.length], lowerDiff/diff);
   //}
 }
-public class inkBlot extends Effect {
-
-  boolean mirrored = false;
-  float spread = 0;
-  int histSize = 4;
-  PShape[] shapeHist;
-  boolean shapeTrailInUse;
-  float offset;
-
-  inkBlot(int size, int offset, float hzMult, String type, int h) {
-    super("default", type, size, offset, hzMult, h);
-    offset = cp.getIndex(type)*7000;
-    offset += millis()*PI;
-
-    shapeHist = new PShape[histSize];
-    initShapeHist();
-  }
-
-  public void initShapeHist() {
-    shapeTrailInUse = false;
-    for (int i = 0; i < histSize; i++) {
-      shapeHist[i] = createShape();
-    }
-  }
-
-  public void display(float left, float top, float right, float bottom) {
-    float w = (right-left);
-    float h = (bottom-top);
-
-    this.display(left + w/2.0f, bottom - h/2.0f, h, w, 0, 0, 0);
-  }
-
-  public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-
-    if (type.equals(ap.mostIntenseBand)) {
-      //if(type == "sub"){
-      int c = this.picked;
-
-      float bandMax = spec[1][maxIndex];
-
-      if (bandMax > 15) {
-        spread = min(min (spread+1, bandMax*2.0f), 150);
-      } else {
-        spread = max(spread-1, 0);
-      }
-
-      for (int i = histSize-1; i > 0; i--) {
-        shapeHist[i] = shapeHist[i-1];
-      }
-
-      if (spread > 0) {
-        //pushMatrix();
-        //translate(0, 0, 5);
-        //ellipse(100, 100*cp.getIndex(type), 50, 50);
-        //popMatrix();
-
-
-        if (type == "high" || type == "upper"||type == "mid") {
-          PShape smokeRing = createShape();
-          smokeRing.beginShape();
-          smokeRing.stroke(cp.setAlpha(picked,222));
-          smokeRing.strokeWeight(1);
-          //smokeRing.fill(cp.getPrev(type));
-          smokeRing.noFill();
-          float timeOffset = millis()*.002f;
-          for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0f) {
-            float noiseDist = spread*(1+.5f*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
-            float _y = noiseDist*cos(i);
-            float _x = noiseDist*sin(i);
-            smokeRing.vertex(_x, _y, 5);
-          }
-          smokeRing.endShape(CLOSE);
-
-          shapeHist[0] = smokeRing;
-
-          shapeTrailInUse = true;
-          for (int i = histSize-1; i > 0; i--) {
-            shape(shapeHist[i], width/2.0f, height/2.0f);//, spread*2 + 20, spread*2 + 20);
-          }
-        } else if (shapeTrailInUse) {
-          initShapeHist();
-        }
-        for (float i = - spread; i < spread; i++) {
-          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
-            float cutoff = .78f - bandMax/10000.0f;
-            float val = noise(j/fakePI + 6.9f*sin(millis()/77.7f + bandMax), i/fakePI + 93*sin(millis()/7000.0f), offset+millis()*.00142857f);
-            if (val > cutoff) {
-              float ratio = 200.0f*val/cutoff;
-              noStroke();
-              fill(cp.setAlpha(c, floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
-              pushMatrix();
-              translate(0, 0, ratio/50.0f+1);
-              //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
-              ellipse(width/2.0f-j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
-              ellipse(width/2.0f+j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
-              //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
-              popMatrix();
-            }
-          }
-        }
-      }
-    }
-  }
-}
 abstract class Effect {
   String name;
   String type;
@@ -1382,20 +1407,14 @@ public class EffectManager {
 
   protected void switchEffect(String newName) {
     switch(newName) {
-    case "expanding":
-      e = new ExpandingVis(size, offset, hzMult, effectName, histLen);
-      break;
     case "mirrored":
       e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
       break;
-    case "mirroredALL":
-      e = new MirroredVerticalVis(size, offset, hzMult, effectName, histLen);
-      break;
-    case "default":
-      e = new inkBlot(size, offset, hzMult, effectName, histLen);
+    case "inkBlot":
+      e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;
     default:
-      e = new inkBlot(size, offset, hzMult, effectName, histLen);
+      e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;
     }
   }
@@ -1422,11 +1441,10 @@ public class EffectManager {
 public class EqRing extends Effect {
   EqRing(int size, int offset, float hzMult, String type, int h) {
     super("EqRing visualizer", type, size, offset, hzMult, h);
-    subEffects = new Effect[4];
+    subEffects = new Effect[3];
     subEffects[0] = new BackgroundPatterns(size, offset, hzMult, type, h);
-    subEffects[1] = new BarsEffect(size, offset, hzMult, type, h);
-    subEffects[2] = new SphereBars(size, offset, hzMult, type, h);
-    subEffects[3] = new Lazer(size, offset, hzMult, type, h);
+    subEffects[1] = new SphereBars(size, offset, hzMult, type, h);
+    subEffects[2] = new Lazer(size, offset, hzMult, type, h);
   }
   //last known radius, used for smoothing
   float last_rad = 1000;
@@ -1458,7 +1476,7 @@ public class EqRing extends Effect {
     stroke(current);
 
     if (sphereBars) {
-      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
     
     if (ringDisplay && gmax > 35) {
@@ -1471,7 +1489,7 @@ public class EqRing extends Effect {
     } 
 
     if (gmax > 30) {
-      subEffects[3].display(_x, _y, h, w, 0, 0, 0);
+      subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
     if (ringDisplay && gmax >50) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
@@ -1540,7 +1558,7 @@ public class EqRing extends Effect {
       s.noFill();
       s.beginShape();
       s.curveVertex(0, 0);
-      float wScale = max((sorted[1][floor(wDepth)]), 1);
+      float wScale = max((sorted[1][0]), 1);
 
       //float decider = random(100);
       //if (decider < 33) {
@@ -1642,10 +1660,29 @@ public class EqRing extends Effect {
     endShape(CLOSE);
   }
 }
-public class ExpandingVis extends Effect {
+public class InkBlot extends Effect {
 
-  ExpandingVis(int size, int offset, float hzMult, String type, int h) {
-    super("ExpandingVis", type, size, offset, hzMult, h);
+  boolean mirrored = false;
+  float spread = 0;
+  int histSize = 4;
+  PShape[] shapeHist;
+  boolean shapeTrailInUse;
+  float offset;
+
+  InkBlot(int size, int offset, float hzMult, String type, int h) {
+    super("inkBlot", type, size, offset, hzMult, h);
+    offset = cp.getIndex(type)*7000;
+    offset += millis()*PI;
+
+    shapeHist = new PShape[histSize];
+    initShapeHist();
+  }
+
+  public void initShapeHist() {
+    shapeTrailInUse = false;
+    for (int i = 0; i < histSize; i++) {
+      shapeHist[i] = createShape();
+    }
   }
 
   public void display(float left, float top, float right, float bottom) {
@@ -1656,67 +1693,73 @@ public class ExpandingVis extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
-    float x_scale = w/size;   
-    float mix = .15f;
-    float ER = .15f+.07f*sin(millis()); //expansion reduction
 
-    strokeWeight(1);
-    int [][] hist = cp.getColorHistory();
-    int current, prev, next, bckgrnd;
-    bckgrnd = hist[0][0];
+    if (type.equals(ap.mostIntenseBand)) {
+      //if(type == "sub"){
+      int c = this.picked;
 
-    float[] splitDist = new float[size];
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        splitDist[j] = specHist[0][1][j];
+      float bandMax = spec[1][maxIndex];
+
+      if (bandMax > 15) {
+        spread = min(min (spread+1, bandMax*2.0f), 150);
+      } else {
+        spread = max(spread-1, 0);
       }
-      for (int j = 1; j < histDepth; j++) {
-        splitDist[i] += specHist[j][1][i]*ER;
+
+      for (int i = histSize-1; i > 0; i--) {
+        shapeHist[i] = shapeHist[i-1];
       }
-    }
-    for (int i = 0; i < histDepth; i++) {
-      splitDist[size-1] = lerp(splitDist[size-1], splitDist[size-2], .5f);
-    }
+
+      if (spread > 0) {
+        //pushMatrix();
+        //translate(0, 0, 5);
+        //ellipse(100, 100*cp.getIndex(type), 50, 50);
+        //popMatrix();
 
 
-    for (int hd = histDepth-1; hd >= 0; hd--) {
-      current = hist[hd][colorIndex];
-      if (colorIndex == 0) {
-        //current = hist[0][colorIndex];
+        if (type == "high" || type == "upper"||type == "mid") {
+          PShape smokeRing = createShape();
+          smokeRing.beginShape();
+          smokeRing.stroke(cp.setAlpha(picked,222));
+          smokeRing.strokeWeight(1);
+          //smokeRing.fill(cp.getPrev(type));
+          smokeRing.noFill();
+          float timeOffset = millis()*.002f;
+          for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0f) {
+            float noiseDist = spread*(1+.5f*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
+            float _y = noiseDist*cos(i);
+            float _x = noiseDist*sin(i);
+            smokeRing.vertex(_x, _y, 5);
+          }
+          smokeRing.endShape(CLOSE);
 
-        prev = hist[1][colorIndex];
-        next =  hist[0][colorIndex];
-      } else if (colorIndex == 1) {
-        prev = lerpColor(current, bckgrnd, mix);
-        next = hist[hd][colorIndex+1];
-      } else if (colorIndex < hist[hd].length-2) {
-        prev = hist[hd][colorIndex-1];
-        next = hist[hd][colorIndex+1];
-      } else { 
-        prev = hist[hd][colorIndex-1];
-        next = lerpColor(current, bckgrnd, mix);
-      }
-      current = color(red(current), green(current), blue(current), alpha(current)*max(hd, 1)/histDepth);
-      for (int i = 0; i < size; i++) {
+          shapeHist[0] = smokeRing;
 
-        stroke(current);
-
-        noFill();
-        pushMatrix();
-        translate(x, y, 0);
-        rotateX(rx);
-        rotateY(ry);
-        rotateZ(rz);
-        if ( hd == 0) {
-          line((i + .5f)*x_scale - w/2.0f, h/2.0f + specHist[hd][1][i], 
-            (i + .5f)*x_scale - w/2.0f, h/2.0f - specHist[hd][1][i]);
-        } else {
-          line((i + .5f)*x_scale - w/2.0f, h/2.0f + splitDist[i] +specHist[hd][1][i], 
-            (i + .5f)*x_scale - w/2.0f, h/2.0f - splitDist[i] - specHist[hd][1][i]);
+          shapeTrailInUse = true;
+          for (int i = histSize-1; i > 0; i--) {
+            shape(shapeHist[i], width/2.0f, height/2.0f);//, spread*2 + 20, spread*2 + 20);
+          }
+        } else if (shapeTrailInUse) {
+          initShapeHist();
         }
-
-        splitDist[i] -= specHist[hd][1][i]*ER;
-        popMatrix();
+        for (float i = - spread; i < spread; i++) {
+          for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
+            float cutoff = .78f - bandMax/10000.0f;
+            float val = noise(j/fakePI + 6.9f*sin(millis()/77.7f + bandMax), i/fakePI + 93*sin(millis()/7000.0f), offset+millis()*.00142857f);
+            if (val > cutoff) {
+              float ratio = 200.0f*val/cutoff;
+              noStroke();
+              fill(cp.setAlpha(c, 22+floor(ratio/(cp.audioRanges-cp.getIndex(type)))));
+              pushMatrix();
+              translate(0, 0, ratio/50.0f+1);
+              //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
+              ellipse(width/2.0f-j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
+              ellipse(width/2.0f+j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
+              //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
+              popMatrix();
+            }
+          }
+        }
       }
     }
   }
@@ -1727,16 +1770,17 @@ boolean shpereBarsDupelicateMode = false;
 boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
+boolean lazerMode = true;
 float menu = millis();
-String specDispMode = "off";
+String[] specModes = {"off", "mirrored", "inkBlot"};
+String specDispMode = specModes[0];
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 
-int BGDotPattern = 0;
+int BGDotPattern = 1;
 
-String snailMode = "disabled";
-String[] snailModes = {"disabled", "line"};
-
+String[] particleModes = {"auto", "perlinLines", "waveReactive", "disabled"};
+String particleMode = particleModes[0];
 boolean test = false;
 
 public void mouseClicked(MouseEvent e) {
@@ -1750,7 +1794,6 @@ public void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
       println("UP arrow key");
-    
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
     } else if (keyCode == CONTROL) {
@@ -1767,46 +1810,28 @@ public void keyPressed() {
           b.effectManager.switchEffect(specDispMode);
         }
       }
-      println("spec display turned off");
+      println("specDispMode turned off");
     } else {
-      println("spec display turned off");
+      println("specDispMode turned off");
     }
   } else if (key  == '1') {
-    if (specDispMode != "default") {
-      specDispMode = "default";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
+    specDispMode = specModes[(Arrays.asList(specModes).indexOf(specDispMode)+1)%specModes.length];
+    for (Band b : ap.bands) {
+      if (b.name != "all") {
+        b.effectManager.switchEffect(specDispMode);
       }
-      println("default spec mode");
-    } else {
-      println("default spec mode already enabled");
     }
+    println("specDispMode set to: " + specDispMode);
   } else if (key == '2') {
-    if (specDispMode != "mirrored") {
-      specDispMode = "mirrored";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("mirrored spec mode");
+    lazerMode = !lazerMode;
+    if (lazerMode) {
+      println("lazerMode enabled");
     } else {
-      println("mirrored spec mode already enabled");
+      println("lazerMode disabled");
     }
   } else if (key == '3') {
-    if (specDispMode != "expanding") {
-      specDispMode = "expanding";
-      for (Band b : ap.bands) {
-        if (b.name != "all") {
-          b.effectManager.switchEffect(specDispMode);
-        }
-      }
-      println("expanding spec mode");
-    } else {
-      println("expanding spec mode already enabled");
-    }
+    particleMode = particleModes[0];
+    println("particleMode set to: " + particleMode);
   } else if (key == '4') {
     BGDotPattern = (BGDotPattern + 1)%6;
     println("BGPattern switched to: " + BGDotPattern);
@@ -1825,8 +1850,11 @@ public void keyPressed() {
     }
     shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
   } else if (key == '7') {
-    snailMode = snailModes[(Arrays.asList(snailModes).indexOf(snailMode)+1)%snailModes.length];
-    println("snailMode set to: " + snailMode);
+    particleMode = particleModes[(Arrays.asList(particleModes).indexOf(particleMode)+1)%particleModes.length];
+    if (particleMode == "disabled") { 
+      particleMode = particleModes[0];
+    }
+    println("particleMode set to: " + particleMode);
   } else if (key == '8') {
     waveForm = waveTypes[(Arrays.asList(waveTypes).indexOf(waveForm)+1)%waveTypes.length];
     println("waveForm set to: " + waveForm);
@@ -1841,6 +1869,7 @@ public void keyPressed() {
     println("unhandled key: " + key);
   }
 }
+
 public class Lazer extends Effect {
   int beams;
   Lazer(int size, int offset, float hzMult, String type, int h) {
@@ -1857,25 +1886,27 @@ public class Lazer extends Effect {
   }
 
   public void display(float x, float y, float h, float w, float rx, float ry, float rz) {
+    if (lazerMode) {
+      float tmax =  sortedHist[0][1][0]*30;
+      noStroke();
+      fill(red(picked), green(picked), blue(picked), tmax/20);
+      int cBeams =  floor(beams + 3*noise(millis() * .002f));
+      for (int i = 0; i < cBeams; i++) {
+        pushMatrix();
+        beginShape();
+        vertex(0, 0, 0);
+        vertex(0, tmax, 0);
+        vertex(tmax/15.0f+tmax*sin(millis()*.002f), tmax/(2+sin(millis()*.002f)), 0);
+        translate(width/2.0f, height/2.0f, 0);
 
-    float tmax =  sortedHist[0][1][0]*30;
-    noStroke();
-    fill(red(picked), green(picked), blue(picked), tmax/20);
-    int cBeams =  floor(beams + 3*noise(millis() * .002f));
-    for (int i = 0; i < cBeams; i++) {
-      pushMatrix();
-      beginShape();
-      vertex(0, 0, 0);
-      vertex(0, tmax, 0);
-      vertex(tmax/15.0f+tmax*sin(millis()*.002f), tmax/(2+sin(millis()*.002f)), 0);
-      translate(width/2.0f, height/2.0f, 0);
-      
-      rotateZ((i+sin(millis()*.0002f))*TWO_PI/cBeams);
-      endShape(CLOSE);
-      popMatrix();
+        rotateZ((i+sin(millis()*.0002f))*TWO_PI/cBeams);
+        endShape(CLOSE);
+        popMatrix();
+      }
     }
   }
 }
+
 public class MirroredVerticalVis extends Effect {
 
   MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
