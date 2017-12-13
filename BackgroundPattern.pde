@@ -187,7 +187,7 @@ public class BackgroundPatterns extends Effect {
     } else if (localMode.equals("disabled") && snailReset == false) {
       snailInit();
     }
-    if (avgXSpeed < 5 || particleAvgX < width/(2.0*fakePI) || particleAvgX > width/2.0 - width/(2.0*fakePI)) {
+    if ((particleAvgX < width/(2.0*fakePI) || particleAvgX > width/2.0 - width/(2.0*fakePI)) && (ap.gMaxIntensity < 65 || avgXSpeed < 5)) {
       particleLineEffect();
     } else {
       waveReactive();
