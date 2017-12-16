@@ -1,7 +1,7 @@
 public class MirroredVerticalVis extends Effect {
 
   MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
-    super("MirroredDefault", type, size, offset, hzMult, h);
+    super("mirrored", type, size, offset, hzMult, h);
   }
 
   void display(float left, float top, float right, float bottom) {

@@ -76,7 +76,9 @@ public class BackgroundPatterns extends Effect {
       snailReset = false;
     } else if (particleMode.equals("auto")) {
       particleAutoSwitcher();
+      snailReset = false;
     } else if (snailReset == false) {
+      println("reset");
       snailInit();
     }
 
@@ -146,7 +148,7 @@ public class BackgroundPatterns extends Effect {
 
         bg.fill(hue, sat, bri);
 
-        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*abs(sin(millis()*.00002))*7, (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03)*gMax : 0;
+        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(millis()*.00002))*5+2), (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03)*gMax : 0;
         float zp = zPos[x][y];
         zp = lerp(zp, zDisp, .25);
         zDisp = zp;
@@ -187,10 +189,12 @@ public class BackgroundPatterns extends Effect {
     } else if (localMode.equals("disabled") && snailReset == false) {
       snailInit();
     }
-    if ((particleAvgX < width/(2.0*fakePI) || particleAvgX > width/2.0 - width/(2.0*fakePI)) && (ap.gMaxIntensity < 65 || avgXSpeed < 5)) {
-      particleLineEffect();
+    if(ap.gMaxIntensity < 10){
+      localMode = "disabled";
+    } else if ((particleAvgX < width/(2.0*fakePI) || particleAvgX > width/2.0 - width/(2.0*fakePI)) || avgXSpeed < 5 || ap.gMaxIntensity < 20 ) {
+      localMode = "perlinLines";
     } else {
-      waveReactive();
+      localMode = "waveReactive";
     }
   }
 
@@ -264,7 +268,7 @@ public class BackgroundPatterns extends Effect {
     //don't clear, already contains bg dots. just draw on top
     bg.colorMode(RGB);
 
-      
+
     float t = (millis()*.0000142857);
     particleAvgX = 0;
     avgXSpeed = MAX_FLOAT;
@@ -345,6 +349,11 @@ public class BackgroundPatterns extends Effect {
       } else {
         break;
       }
+    }
+    if (ap.mostIntenseBand.equals("high")  ) {
+      bestIndex = min(bestIndex+1, zeros.size()-1);
+    } else if ( ap.mostIntenseBand.equals("sub")) {
+      bestIndex = max(bestIndex -1, 0);
     }
     return bestIndex;
   }

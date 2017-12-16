@@ -34,6 +34,7 @@ public class InkBlot extends Effect {
 
     if (type.equals(ap.mostIntenseBand)) {
       //if(type == "sub"){
+        
       color c = this.picked;
 
       float bandMax = spec[1][maxIndex];

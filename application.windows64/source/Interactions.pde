@@ -7,7 +7,7 @@ boolean ringDisplay = true;
 boolean lazerMode = true;
 float menu = millis();
 String[] specModes = {"off", "mirrored", "inkBlot"};
-String specDispMode = specModes[0];
+String specDispMode = specModes[1];
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 
@@ -64,7 +64,7 @@ void keyPressed() {
       println("lazerMode disabled");
     }
   } else if (key == '3') {
-    particleMode = particleModes[0];
+    particleMode = particleModes[particleModes.length-1];
     println("particleMode set to: " + particleMode);
   } else if (key == '4') {
     BGDotPattern = (BGDotPattern + 1)%6;

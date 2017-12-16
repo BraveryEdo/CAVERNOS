@@ -55,21 +55,14 @@ public class EffectManager {
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
-      //case "sub": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "low": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "mid": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "upper": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "high":
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
+    case "sub":
+    case "low": 
+    case "mid": 
+    case "upper": 
+    case "high":
+      e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
+      e.type = name;
+      break;
     default:
       e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
       e.type = name;

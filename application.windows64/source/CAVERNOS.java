@@ -19,7 +19,7 @@ import java.io.IOException;
 
 public class CAVERNOS extends PApplet {
 
- 
+
 
 
 
@@ -75,13 +75,13 @@ public void draw() {
 }
 
 public void showStats() {
-    stroke(255);
-    fill(128,128,128,128);//lerpColor(cp.getPrev("all"), color(128,128,128,128), .5));
-    rect(25,25, width/3.0f, height/1.5f);
-    textAlign(LEFT);
-    textSize(24);
-    fill(255);
-    text("STATUS" + "\n" + 
+  stroke(255);
+  fill(128, 128, 128, 128);//lerpColor(cp.getPrev("all"), color(128,128,128,128), .5));
+  rect(25, 25, width/3.0f, height/1.5f);
+  textAlign(LEFT);
+  textSize(24);
+  fill(255);
+  text("STATUS" + "\n" + 
     "spotlightBars: " + sphereBars + "\n" +
     "ringWave: " + ringWave + "\n" +
     "ringDisplay: " + ringDisplay + "\n" +
@@ -425,7 +425,6 @@ public class AudioProcessor {
   }
   );
 }
-
 public class BackgroundPatterns extends Effect {
   PGraphics bg;
 
@@ -504,7 +503,9 @@ public class BackgroundPatterns extends Effect {
       snailReset = false;
     } else if (particleMode.equals("auto")) {
       particleAutoSwitcher();
+      snailReset = false;
     } else if (snailReset == false) {
+      println("reset");
       snailInit();
     }
 
@@ -574,7 +575,7 @@ public class BackgroundPatterns extends Effect {
 
         bg.fill(hue, sat, bri);
 
-        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*abs(sin(millis()*.00002f))*7, (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03f)*gMax : 0;
+        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(millis()*.00002f))*5+2), (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03f)*gMax : 0;
         float zp = zPos[x][y];
         zp = lerp(zp, zDisp, .25f);
         zDisp = zp;
@@ -615,10 +616,12 @@ public class BackgroundPatterns extends Effect {
     } else if (localMode.equals("disabled") && snailReset == false) {
       snailInit();
     }
-    if (avgXSpeed < 5 || particleAvgX < width/(2.0f*fakePI) || particleAvgX > width/2.0f - width/(2.0f*fakePI)) {
-      particleLineEffect();
+    if(ap.gMaxIntensity < 10){
+      localMode = "disabled";
+    } else if ((particleAvgX < width/(2.0f*fakePI) || particleAvgX > width/2.0f - width/(2.0f*fakePI)) || avgXSpeed < 5 || ap.gMaxIntensity < 20 ) {
+      localMode = "perlinLines";
     } else {
-      waveReactive();
+      localMode = "waveReactive";
     }
   }
 
@@ -692,7 +695,7 @@ public class BackgroundPatterns extends Effect {
     //don't clear, already contains bg dots. just draw on top
     bg.colorMode(RGB);
 
-      
+
     float t = (millis()*.0000142857f);
     particleAvgX = 0;
     avgXSpeed = MAX_FLOAT;
@@ -773,6 +776,11 @@ public class BackgroundPatterns extends Effect {
       } else {
         break;
       }
+    }
+    if (ap.mostIntenseBand.equals("high")  ) {
+      bestIndex = min(bestIndex+1, zeros.size()-1);
+    } else if ( ap.mostIntenseBand.equals("sub")) {
+      bestIndex = max(bestIndex -1, 0);
     }
     return bestIndex;
   }
@@ -1358,21 +1366,14 @@ public class EffectManager {
       e = new EqRing(size, offset, hzMult, name, histLen);
       e.type = name;
       break;
-      //case "sub": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "low": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "mid": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "upper": 
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
-      //case "high":
-      //  e = new DefaultVis(size, offset, hzMult, name, histLen);
-      //  break;
+    case "sub":
+    case "low": 
+    case "mid": 
+    case "upper": 
+    case "high":
+      e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
+      e.type = name;
+      break;
     default:
       e = new MirroredVerticalVis(size, offset, hzMult, name, histLen);
       e.type = name;
@@ -1696,6 +1697,7 @@ public class InkBlot extends Effect {
 
     if (type.equals(ap.mostIntenseBand)) {
       //if(type == "sub"){
+        
       int c = this.picked;
 
       float bandMax = spec[1][maxIndex];
@@ -1773,7 +1775,7 @@ boolean ringDisplay = true;
 boolean lazerMode = true;
 float menu = millis();
 String[] specModes = {"off", "mirrored", "inkBlot"};
-String specDispMode = specModes[0];
+String specDispMode = specModes[1];
 String[] waveTypes = {"full", "simple", "disabled"};
 String waveForm = waveTypes[0];
 
@@ -1830,7 +1832,7 @@ public void keyPressed() {
       println("lazerMode disabled");
     }
   } else if (key == '3') {
-    particleMode = particleModes[0];
+    particleMode = particleModes[particleModes.length-1];
     println("particleMode set to: " + particleMode);
   } else if (key == '4') {
     BGDotPattern = (BGDotPattern + 1)%6;
@@ -1869,7 +1871,6 @@ public void keyPressed() {
     println("unhandled key: " + key);
   }
 }
-
 public class Lazer extends Effect {
   int beams;
   Lazer(int size, int offset, float hzMult, String type, int h) {
@@ -1906,11 +1907,10 @@ public class Lazer extends Effect {
     }
   }
 }
-
 public class MirroredVerticalVis extends Effect {
 
   MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
-    super("MirroredDefault", type, size, offset, hzMult, h);
+    super("mirrored", type, size, offset, hzMult, h);
   }
 
   public void display(float left, float top, float right, float bottom) {
