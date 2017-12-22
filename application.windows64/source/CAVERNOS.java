@@ -449,12 +449,18 @@ public class BackgroundPatterns extends Effect {
   boolean snailReset = false;
   float perlinOffset = random(99999);
 
+  float y2xScale = PApplet.parseFloat(width)/PApplet.parseFloat(height);
+  float x2yScale = PApplet.parseFloat(height)/PApplet.parseFloat(width);
+
   BackgroundPatterns(int size, int offset, float hzMult, String type, int h) {
     super("BackgroundPattern", type, size, offset, hzMult, h);
     init();
   }
 
   public void init() {
+    y2xScale = PApplet.parseFloat(width)/PApplet.parseFloat(height);
+    x2yScale = PApplet.parseFloat(height)/PApplet.parseFloat(width);
+
     bg = createGraphics(width, height, P3D);
 
     pointSizes = new float[ceil((width/2.0f)/dotsGridSize)][ceil((height/2.0f)/dotsGridSize)];
@@ -547,7 +553,7 @@ public class BackgroundPatterns extends Effect {
             bRad = radius;
           } else if (avgBri < fakePI * 44) {
             bRad = radius*(max(bri, fakePI * 30)/240);
-          } else if (avgBri < fakePI * 47) { 
+          } else if (avgBri < fakePI * 47 && ap.gMaxIntensity > 66) { 
             bRad = radius;
           } else {
             bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
@@ -616,13 +622,14 @@ public class BackgroundPatterns extends Effect {
     } else if (localMode.equals("disabled") && snailReset == false) {
       snailInit();
     }
-    if(ap.gMaxIntensity < 10){
+    if (ap.gMaxIntensity < 10) {
       localMode = "disabled";
     } else if ((particleAvgX < width/(2.0f*fakePI) || particleAvgX > width/2.0f - width/(2.0f*fakePI)) || avgXSpeed < 5 || ap.gMaxIntensity < 20 ) {
       localMode = "perlinLines";
     } else {
       localMode = "waveReactive";
     }
+    
   }
 
   public void waveReactive() {
@@ -669,7 +676,7 @@ public class BackgroundPatterns extends Effect {
       float dir = (closestZero < oldX)? -1 : 1;
 
       float noiseD = fakePI*sin(t)*noise(t);
-      float newX = oldX + dir*max(.35f*abs(closestZero-oldX), noiseD, fakePI);
+      float newX = oldX + dir*max(.35f*abs(closestZero-oldX), noiseD);
       float newY = oldY + noiseD;
 
       if (newX < 2 || newX > width/2.0f - 2 || newY - 5 > height || newY < -5 ) {
@@ -685,6 +692,11 @@ public class BackgroundPatterns extends Effect {
       bg.line(width - oldX, oldY, width - newX, newY);
       bg.line(oldX, height - oldY, newX, height - newY);
       bg.line(width - oldX, height - oldY, width - newX, height - newY);
+
+      bg.line(oldY*y2xScale, oldX*x2yScale, newY*y2xScale, newX*x2yScale);
+      bg.line(width - oldY*y2xScale, oldX*x2yScale, width - newY*y2xScale, newX*x2yScale);
+      bg.line(oldY*y2xScale, height - oldX*x2yScale, newY*y2xScale, height - newX*x2yScale);
+      bg.line(width - oldY*y2xScale, height - oldX*x2yScale, width - newY*y2xScale, height - newX*x2yScale);
     }
     particleAvgX /= numParticles;
     avgXSpeed /= numParticles;
@@ -731,22 +743,19 @@ public class BackgroundPatterns extends Effect {
       particleAvgX += newX;
       particles[n][0] = newX;
       particles[n][1] = newY;
-      //if (snailMode.equals("dot")) {
-      //  bg.ellipse(particles[h][n][0], particles[h][n][1], size, size);
-      //  bg.ellipse(width - particles[h][n][0], particles[h][n][1], size, size);
-      //  bg.ellipse(particles[h][n][0], height - particles[h][n][1], size, size);
-      //  bg.ellipse(width - particles[h][n][0], height - particles[h][n][1], size, size);
-      //} else if (snailMode.equals("line")) {
-
 
       bg.line(oldX, oldY, newX, newY);
       bg.line(width - oldX, oldY, width - newX, newY);
       bg.line(oldX, height - oldY, newX, height - newY);
       bg.line(width - oldX, height - oldY, width - newX, height - newY);
+
+      bg.line(oldY*y2xScale, oldX*x2yScale, newY*y2xScale, newX*x2yScale);
+      bg.line(width - oldY*y2xScale, oldX*x2yScale, width - newY*y2xScale, newX*x2yScale);
+      bg.line(oldY*y2xScale, height - oldX*x2yScale, newY*y2xScale, height - newX*x2yScale);
+      bg.line(width - oldY*y2xScale, height - oldX*x2yScale, width - newY*y2xScale, height - newX*x2yScale);
     }
     particleAvgX /= numParticles;
     bg.endDraw();
-    image(bg, 0, 0);
   }
 
   public void explodeLine(float x, float y) {
@@ -785,7 +794,6 @@ public class BackgroundPatterns extends Effect {
     return bestIndex;
   }
 }
-
   public class Band {
 
   private String name;
@@ -1480,7 +1488,7 @@ public class EqRing extends Effect {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
     
-    if (ringDisplay && gmax > 35) {
+    if (ringDisplay && gmax > 45) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
@@ -1492,7 +1500,7 @@ public class EqRing extends Effect {
     if (gmax > 30) {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
-    if (ringDisplay && gmax >50) {
+    if (ringDisplay && gmax >65) {
       int lerp1 = lerpColor(current, lastPicked, 0.33f);
       noFill();
       stroke(lerp1, o_rad/3);

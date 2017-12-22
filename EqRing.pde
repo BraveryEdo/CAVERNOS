@@ -39,7 +39,7 @@ public class EqRing extends Effect {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
     
-    if (ringDisplay && gmax > 35) {
+    if (ringDisplay && gmax > 45) {
       noFill();
       triRing(_x, _y, nbars, i_rad, o_rot, false);
     }
@@ -51,7 +51,7 @@ public class EqRing extends Effect {
     if (gmax > 30) {
       subEffects[2].display(_x, _y, h, w, 0, 0, 0);
     }
-    if (ringDisplay && gmax >50) {
+    if (ringDisplay && gmax >65) {
       color lerp1 = lerpColor(current, lastPicked, 0.33);
       noFill();
       stroke(lerp1, o_rad/3);
