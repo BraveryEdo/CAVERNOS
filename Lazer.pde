@@ -17,20 +17,27 @@ public class Lazer extends Effect {
     if (lazerMode) {
       float tmax =  sortedHist[0][1][0]*30;
       noStroke();
+      pushMatrix();
+      
+      //translate(-width/2.0,height  /2.0, 0);
+      //rotateX(sin(time*.00002)*PI);
+      //translate(width/2.0,-height/2.0,0);
       fill(red(picked), green(picked), blue(picked), tmax/20);
-      int cBeams =  floor(beams + 3*noise(millis() * .002));
+      int cBeams =  floor(beams + 3*noise(time * .002));
       for (int i = 0; i < cBeams; i++) {
         pushMatrix();
         beginShape();
         vertex(0, 0, 0);
         vertex(0, tmax, 0);
-        vertex(tmax/15.0+tmax*sin(millis()*.002), tmax/(2+sin(millis()*.002)), 0);
-        translate(width/2.0, height/2.0, 0);
-
-        rotateZ((i+sin(millis()*.0002))*TWO_PI/cBeams);
+        vertex(tmax/15.0+tmax*sin(time*.002), tmax/(2+sin(time*.002)), 0);
+        translate(width/2.0, height/2.0, fakePI);
+ 
+        rotateZ((i+sin(time*.0002))*TWO_PI/cBeams);
         endShape(CLOSE);
         popMatrix();
       }
+      
+      popMatrix();
     }
   }
 }

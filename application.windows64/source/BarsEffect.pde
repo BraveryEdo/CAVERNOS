@@ -18,7 +18,7 @@ class BarsEffect extends Effect {
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
-    float ts = sin(millis()*.0002);
+    float ts = sin(time*.0002);
     float i_rad = 187-5*ts;
     float rot = ts;
 

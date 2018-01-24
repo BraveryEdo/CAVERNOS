@@ -24,54 +24,104 @@ public class CAVERNOS extends PApplet {
 
 
 
+boolean liveMode = true;
+
+
 
 float fakePI = 22.0f/7.0f;
 int histSize = 32;
 ColorPicker cp;
 AudioProcessor ap;
 
+Minim minim;
+AudioPlayer player;
+
 //left/mix/right
 int channels = 3;
 //incremented/decremented while loading, should be 0 when ready
 int loading = 0;
-int logicRate = 1000;
+int logicRate = 1024;
+int time;
+int start;
 
 public void setup() {
   loading++;
   //size(1000, 700, P3D);
   
-  frameRate(60);
+  frameRate(30);
   noCursor();   
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
   cp = new ColorPicker();
-  ap = new AudioProcessor(logicRate);
-  loading--;
-}      
+  minim = new Minim(this);
+  time = 0;
+  if (liveMode) {
+    ap = new AudioProcessor(logicRate);
+  } else {
+    selectInput("Select music to visualize", "fileSelected");
+  }   
 
+  start = millis();
+  loading--;
+}
+
+public void fileSelected(File selected) {
+  loading++;
+  if (selected == null || !selected.isFile()) {
+    selectInput("Select music to visualize", "fileSelected");
+    println("proper file not selected");
+  } else {
+    ap = new AudioProcessor(selected);
+  }
+  loading--;
+}
 
 public void draw() {
   clear();
-  if (loading != 0) {
+  if (loading == 0) {
+    if (liveMode) {
+      ap.display();
+      if (time-menu < 15000) {
+        textAlign(CENTER);
+        textSize(32);
+        fill(255-(time-menu)/25);
+        text("Controls: 0,1,2,3,4,5,6,7,8,9", width/2.0f, height/4.0f);
+        //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
+      }
+      if (test) {
+        showStats();
+      }
+    } else if (ap != null) {
+      createFrame();
+    }
+  } else {
     println("loading counter: ", loading);
     textAlign(CENTER);
     textSize(42);
     text("Loading...", width/2.0f, height/2.0f);
+  }
+}
+
+int fps = 10;
+int frameTime = floor(1000.0f/PApplet.parseFloat(fps));
+public void createFrame() {
+  if (time < player.length()) {
+    ap.createFrame();
+    time += frameTime;
+    saveFrame("frames/frame-" + String.format("%08d", time/frameTime) + ".png");
   } else {
-
-    ap.display();
-    if (millis()-menu < 15000) {
-      textAlign(CENTER);
-      textSize(32);
-      fill(255-(millis()-menu)/25);
-      text("Controls: 0,1,2,3,4,5,6,7,8,9", width/2.0f, height/4.0f);
-      //text("Press CTRL to toggle menu...", width/2.0, height/4.0);
-    }
+    exit();
+    println("==========DONE=========");
   }
-
-  if (test) {
-    showStats();
-  }
+  //println("player len: " + player.length() + " number of frames to be created = " + player.length()/frameTime);
+  float prog = PApplet.parseFloat(time)/PApplet.parseFloat(player.length())*100.0f;
+  int seconds = floor(((millis() - start) / 1000.0f)*100.0f/prog);
+  int minutes = seconds / 60;
+  int hours = minutes / 60;
+  seconds -= minutes*60;
+  minutes -= hours*60;
+  String timeRemaining = hours + ":" + minutes + ":" + seconds;
+  println("Progress: " + String.format("%.2f",prog) + " - time remaining: " + timeRemaining);
 }
 
 public void showStats() {
@@ -97,18 +147,18 @@ public void showStats() {
 }
 public class AudioProcessor {
   //audio processing elements
-  Minim minim;
   AudioInput in;
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
   String mostIntenseBand = "sub";
   float gMaxIntensity = 0;
+  float energy = 0;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
   int specSize = 2048;
-  float[][] magnitude;
+  float[][] magnitudesByFreq;
 
   ////ranges are based on a sample frequency of 8192 (2^13) 
   //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -117,9 +167,6 @@ public class AudioProcessor {
   //ranges are based on a sample frequency of 8192/4 (2^9) 
   float[] bottomLimit = {0, sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32};
   float[] topLimit = {sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/8};
-
-
-
 
   //float[] bottomLimit = {0, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16};
   //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -134,6 +181,68 @@ public class AudioProcessor {
   int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
   int[] allRange = {floor(bottomLimit[0]*mult), floor(topLimit[4]*mult)};
 
+  public AudioProcessor(File f) {
+    loading++;
+    //String[] exts = new String[] {".wav", ".aiff", ".au", ".snd", ".mp3"};
+
+
+    player = minim.loadFile(f.getAbsolutePath());
+
+    rfft = new FFT(player.bufferSize(), player.sampleRate());
+    lfft = new FFT(player.bufferSize(), player.sampleRate());
+
+    rfft.logAverages(22, 6);
+    lfft.logAverages(22, 6);
+
+    magnitudesByFreq = new float[channels][specSize];
+    initBands();
+    loading--;
+    println("audioProcessor started");
+  }
+
+  public void createFrame() {
+
+    player.play(time);
+
+    //update audio buffer
+    rfft.forward(player.right);
+    lfft.forward(player.left);
+
+    float min = 999999;
+    float max = -999999;
+    float avg = 0;
+
+    for (int i = 0; i < specSize; i++) {
+      float left_bin = lfft.getBand(i);
+      float right_bin = rfft.getBand(i);
+      float  mix_bin = (left_bin+right_bin)/2.0f;
+      magnitudesByFreq[0][i] = left_bin;
+      magnitudesByFreq[1][i] = mix_bin;
+      magnitudesByFreq[2][i] = right_bin;
+      min = min(min, min(mix_bin, min(left_bin, right_bin)));
+      max = max(max, max(mix_bin, max(left_bin, right_bin)));
+      avg += left_bin+mix_bin+right_bin;
+    }
+    avg /= (3* specSize);
+
+    scaleMag(min, max);
+
+    streamAll();
+
+    int maxInt = 1;
+    for (int i  = 1; i < bands.length-1; i++) {
+      if (bands[i].maxIntensity >  bands[maxInt].maxIntensity) {
+        maxInt = i;
+      }
+    }
+
+    mostIntenseBand = bands[maxInt].getName();
+    gMaxIntensity = bands[maxInt].maxIntensity;
+
+    display();
+  }
+
+
   public AudioProcessor(int lr) {
     //println("ranges");
     //for (int i = 0; i < bottomLimit.length; i++) {
@@ -142,7 +251,6 @@ public class AudioProcessor {
 
     logicRate = lr;
     loading++;
-    minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
 
     rfft = new FFT(in.bufferSize(), in.sampleRate());
@@ -152,65 +260,17 @@ public class AudioProcessor {
     lfft.logAverages(22, 6);
 
     //spectrum is divided into left, mix, and right channels
-    magnitude = new float[channels][specSize];
-    lastLogicUpdate = millis();
+    magnitudesByFreq = new float[channels][specSize];
+    lastLogicUpdate = time;
 
 
     //update audio buffer
     rfft.forward(in.right);
     lfft.forward(in.left);
 
-    float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-      Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-      Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+    initBands();
 
-    float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-      Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-      Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
-
-    float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-      Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-      Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
-
-    float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-      Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-      Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
-
-    float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-      Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-      Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
-
-    int newSize = 64;                     
-    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
-    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
-    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
-    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
-
-    float[][] sub2 = specResize(subArr, newSize, subLast);
-    float[][] low2 = specResize(lowArr, newSize, lowLast);
-    float[][] mid2 = specResize(midArr, newSize, midLast);
-    float[][] upper2 = specResize(upperArr, newSize, upperLast);
-    float[][] high2 = specResize(highArr, newSize, null);
-    float[][] all2 = specResize(magnitude, newSize, null);
-
-    sub = new Band(sub2, hzMult, subRange, newSize, "sub");
-    low = new Band(low2, hzMult, lowRange, newSize, "low");
-    mid = new Band(mid2, hzMult, midRange, newSize, "mid");
-    upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
-    high = new Band(high2, hzMult, highRange, newSize, "high");
-    all = new Band(all2, hzMult, allRange, newSize, "all");
-
-    bands = new Band[6];
-    bands[0] = sub;
-    bands[1] = low;
-    bands[2] = mid;
-    bands[3] = upper;
-    bands[4] = high;
-    bands[5] = all;
-
-
-
-    logicThread.start();
+    liveLogicThread.start();
     println("audioProcessor started");
     loading--;
   }
@@ -235,7 +295,6 @@ public class AudioProcessor {
       c++;
     }
   }
-
 
 
 
@@ -305,11 +364,14 @@ public class AudioProcessor {
   }
 
 
-  Thread logicThread = new Thread(new Runnable() {
+  Thread liveLogicThread = new Thread(new Runnable() {
     public void run() {
-      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", logicThreadStarted");
+      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", liveLogicThread Started");
 
       while (true) {
+
+        time = millis();
+
         //update audio buffer
         rfft.forward(in.right);
         lfft.forward(in.left);
@@ -317,83 +379,25 @@ public class AudioProcessor {
         float min = 999999;
         float max = -999999;
         float avg = 0;
-
+        float tEnergy = 0;
         for (int i = 0; i < specSize; i++) {
           float left_bin = lfft.getBand(i);
           float right_bin = rfft.getBand(i);
           float  mix_bin = (left_bin+right_bin)/2.0f;
-          magnitude[0][i] = left_bin;
-          magnitude[1][i] = mix_bin;
-          magnitude[2][i] = right_bin;
+          magnitudesByFreq[0][i] = left_bin;
+          magnitudesByFreq[1][i] = mix_bin;
+          magnitudesByFreq[2][i] = right_bin;
           min = min(min, min(mix_bin, min(left_bin, right_bin)));
           max = max(max, max(mix_bin, max(left_bin, right_bin)));
           avg += left_bin+mix_bin+right_bin;
+          tEnergy += mix_bin*pow(i+1, -.5f);
         }
         avg /= (3* specSize);
+        energy = tEnergy;
+        //println("Energy: " + energy);
+        scaleMag(min, max);
 
-
-        if (max > 100) {
-          //println(max);
-          for (int i = 0; i < specSize; i++) {
-            float scale = 100.0f/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-          //} else if (max < 60 && avg > 10) {
-          //  for (int i = 0; i < specSize; i++) {
-          //    float scale = 100.0/(max-min);
-          //    for (int j = 0; j < magnitude.length; j++) {
-          //      magnitude[j][i] *= scale;
-          //    }
-          //  }
-        } else if ( max < 20 && max > 5) {
-          for (int i = 0; i < specSize; i++) {
-            float scale = 50.0f/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-        }
-        float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
-
-        float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
-
-        float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
-
-        float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
-
-        float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-          Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-          Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
-
-        int newSize = 64;
-        float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
-        float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
-        float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
-        float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
-
-        float[][] sub2 = specResize(subArr, newSize, subLast);
-        float[][] low2 = specResize(lowArr, newSize, lowLast);
-        float[][] mid2 = specResize(midArr, newSize, midLast);
-        float[][] upper2 = specResize(upperArr, newSize, upperLast);
-        float[][] high2 = specResize(highArr, newSize, null);   
-        float[][] all2 = specResize(magnitude, newSize, null);
-
-        sub.stream(sub2);
-        low.stream(low2);
-        mid.stream(mid2);
-        upper.stream(upper2);
-        high.stream(high2);
-        all.stream(all2);
+        streamAll();
 
         int maxInt = 1;
         for (int i  = 1; i < bands.length-1; i++) {
@@ -407,7 +411,7 @@ public class AudioProcessor {
 
         //------------
         //framelimiter
-        int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
+        int timeToWait = 1000/logicRate - (time-lastLogicUpdate); // set framerateLogic to -1 to not limit;
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
@@ -419,29 +423,145 @@ public class AudioProcessor {
             Thread.currentThread().interrupt();
           }
         }
-        lastLogicUpdate = millis();
+        lastLogicUpdate = time;
       }
     }
   }
   );
+
+  public void initBands() {
+    float[][] subArr = {Arrays.copyOfRange(magnitudesByFreq[0], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], subRange[0], subRange[1])};
+
+    float[][] lowArr = {Arrays.copyOfRange(magnitudesByFreq[0], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], lowRange[0], lowRange[1])};
+
+    float[][] midArr = {Arrays.copyOfRange(magnitudesByFreq[0], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], midRange[0], midRange[1])};
+
+    float[][] upperArr = {Arrays.copyOfRange(magnitudesByFreq[0], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], upperRange[0], upperRange[1])};
+
+    float[][] highArr = {Arrays.copyOfRange(magnitudesByFreq[0], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], highRange[0], highRange[1])};
+
+    int newSize = 64;                     
+    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+    float[][] sub2 = specResize(subArr, newSize, subLast);
+    float[][] low2 = specResize(lowArr, newSize, lowLast);
+    float[][] mid2 = specResize(midArr, newSize, midLast);
+    float[][] upper2 = specResize(upperArr, newSize, upperLast);
+    float[][] high2 = specResize(highArr, newSize, null);
+    float[][] all2 = specResize(magnitudesByFreq, newSize, null);
+
+    sub = new Band(sub2, hzMult, subRange, newSize, "sub");
+    low = new Band(low2, hzMult, lowRange, newSize, "low");
+    mid = new Band(mid2, hzMult, midRange, newSize, "mid");
+    upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
+    high = new Band(high2, hzMult, highRange, newSize, "high");
+    all = new Band(all2, hzMult, allRange, newSize, "all");
+
+    bands = new Band[6];
+    bands[0] = sub;
+    bands[1] = low;
+    bands[2] = mid;
+    bands[3] = upper;
+    bands[4] = high;
+    bands[5] = all;
+  }
+
+  public void streamAll() {
+    float[][] subArr = {Arrays.copyOfRange(magnitudesByFreq[0], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], subRange[0], subRange[1])};
+
+    float[][] lowArr = {Arrays.copyOfRange(magnitudesByFreq[0], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], lowRange[0], lowRange[1])};
+
+    float[][] midArr = {Arrays.copyOfRange(magnitudesByFreq[0], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], midRange[0], midRange[1])};
+
+    float[][] upperArr = {Arrays.copyOfRange(magnitudesByFreq[0], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], upperRange[0], upperRange[1])};
+
+    float[][] highArr = {Arrays.copyOfRange(magnitudesByFreq[0], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], highRange[0], highRange[1])};
+
+    int newSize = 64;
+    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+    float[][] sub2 = specResize(subArr, newSize, subLast);
+    float[][] low2 = specResize(lowArr, newSize, lowLast);
+    float[][] mid2 = specResize(midArr, newSize, midLast);
+    float[][] upper2 = specResize(upperArr, newSize, upperLast);
+    float[][] high2 = specResize(highArr, newSize, null);   
+    float[][] all2 = specResize(magnitudesByFreq, newSize, null);
+
+    sub.stream(sub2);
+    low.stream(low2);
+    mid.stream(mid2);
+    upper.stream(upper2);
+    high.stream(high2);
+    all.stream(all2);
+  }
+
+  public void scaleMag(float min, float max) {
+    if (max > 100) {
+      //println(max);
+      for (int i = 0; i < specSize; i++) {
+        float scale = 100.0f/(max-min);
+        for (int j = 0; j < magnitudesByFreq.length; j++) {
+          magnitudesByFreq[j][i] *= scale;
+        }
+      }
+      //} else if (max < 60 && avg > 10) {
+      //  for (int i = 0; i < specSize; i++) {
+      //    float scale = 100.0/(max-min);
+      //    for (int j = 0; j < magnitude.length; j++) {
+      //      magnitude[j][i] *= scale;
+      //    }
+      //  }
+    } else if ( max < 20 && max > 5) {
+      for (int i = 0; i < specSize; i++) {
+        float scale = 50.0f/(max-min);
+        for (int j = 0; j < magnitudesByFreq.length; j++) {
+          magnitudesByFreq[j][i] *= scale;
+        }
+      }
+    }
+  }
 }
 public class BackgroundPatterns extends Effect {
   PGraphics bg;
-
   //dots
   float[][] pointSizes;
   float[][] zPos;
   float avgBri;
   float dotsNoisescale = 0.025f;    
   float dotsGridSize = 25;
-
   //snailTrail
-
   int numParticles = 1024;
   float[][] particles;
   float particleAvgX = 0;
+  float reactiveBri = 0;
   float avgXSpeed = MAX_FLOAT;
-  float lastSwitch = millis();
+  float lastSwitch = time;
   String[] autoModes;
   String localMode = particleModes[0];
   float snailNoisescale = 0.000142857f;
@@ -529,18 +649,20 @@ public class BackgroundPatterns extends Effect {
     float gMax = ap.gMaxIntensity;
 
     bg.beginDraw();
-    bg.clear();
+    bg.clear(); 
 
     bg.colorMode(HSB);
     bg.noStroke();
     for (int y = 0; y < ceil((height/2.0f)/dotsGridSize); y++) {
       for (int x = 0; x < ceil((width/2.0f)/dotsGridSize); x++) {
-        float perl = (((sin(millis()*.002f)+PI*abs(cos(millis()*.00002f)*5))*noise(x*dotsNoisescale, y*dotsNoisescale, millis()*0.0002f)%PI)-(PI/2))*160;
+        float perl = (((sin(time*.002f)+PI*abs(cos(time*.00002f)*5))*noise(x*dotsNoisescale, y*dotsNoisescale, time*0.0002f)%PI)-(PI/2))*160;
 
-        float hue = (millis()*.02f + abs(perl)) %255;
-        float sat = 50*abs(cos(millis()*.02f))+100*sin(millis()*.002f)+16;
-        float bri = 240-abs(perl)+10*sin(millis()*.00002f); 
-
+        float hue = (time*.02f + abs(perl)) %255;
+        float sat = 50*abs(cos(time*.02f))+100*sin(time*.002f)*gMax/100.0f;
+        float bri = 200-abs(perl)+10*sin(time*.00002f); 
+        reactiveBri = lerp(reactiveBri, min(bri, gMax*2.5f), .33f); 
+        
+        
         float radius = dotsGridSize-2;
 
         float bRad = 0;
@@ -548,22 +670,18 @@ public class BackgroundPatterns extends Effect {
         case 0:
         case 1:
           if (avgBri < fakePI * 30) {
-            bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
+            bRad = radius/2.0f*((255.0f/max(reactiveBri, fakePI*30))+1);
           } else if (avgBri < fakePI * 37) {
-            bRad = radius;
-          } else if (avgBri < fakePI * 44) {
-            bRad = radius*(max(bri, fakePI * 30)/240);
-          } else if (avgBri < fakePI * 47 && ap.gMaxIntensity > 66) { 
-            bRad = radius;
-          } else {
-            bRad = radius/2.0f*((255/max(bri, fakePI * 30))+1);
-          }
+            bRad = reactiveBri;
+          } else {/* if(avgBri < fakePI * 44) {*/
+            bRad = radius*(reactiveBri/240.0f);
+          } 
           break;
         case 2:
-          bRad = (255/max(bri, 100))*radius/2.0f+radius/2.0f;
+          bRad = (255/max(reactiveBri, 100))*radius/2.0f+radius/2.0f;
           break;
         case 4:
-          bRad = (max(bri, 22/7*30)/240)*radius;
+          bRad = (max(reactiveBri, 22/7*30)/240)*radius;
           break;
         case 3:
         case 5:
@@ -579,9 +697,9 @@ public class BackgroundPatterns extends Effect {
 
         tAvgBri  += bri;
 
-        bg.fill(hue, sat, bri);
+        bg.fill(hue, sat, reactiveBri);
 
-        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(millis()*.00002f))*5+2), (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03f)*gMax : 0;
+        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(time*.00002f))*5+2), (height-y)*dotsNoisescale*7, time*dotsNoisescale*.03f)*gMax : 0;
         float zp = zPos[x][y];
         zp = lerp(zp, zDisp, .25f);
         zDisp = zp;
@@ -629,7 +747,6 @@ public class BackgroundPatterns extends Effect {
     } else {
       localMode = "waveReactive";
     }
-    
   }
 
   public void waveReactive() {
@@ -637,7 +754,7 @@ public class BackgroundPatterns extends Effect {
     //don't clear, already contains bg dots. just draw on top
     bg.colorMode(RGB);
 
-    float t = (millis()*.0000142857f);
+    float t = (time*.0000142857f);
 
     ArrayList<Float> zeros = new ArrayList<Float>();
 
@@ -708,7 +825,7 @@ public class BackgroundPatterns extends Effect {
     bg.colorMode(RGB);
 
 
-    float t = (millis()*.0000142857f);
+    float t = (time*.0000142857f);
     particleAvgX = 0;
     avgXSpeed = MAX_FLOAT;
     for (int n = 0; n < numParticles; n++) {
@@ -727,7 +844,6 @@ public class BackgroundPatterns extends Effect {
       float newY = oldY + 7*cos(perl);
 
       if (newX < -5) {
-        explodeLine(0, oldY);
         oldX = newX = width/2.0f;//random(width/2.0);
         oldY = newY = random(height/2.0f);
       } else if (newX > width/2.0f) {
@@ -756,21 +872,6 @@ public class BackgroundPatterns extends Effect {
     }
     particleAvgX /= numParticles;
     bg.endDraw();
-  }
-
-  public void explodeLine(float x, float y) {
-    float spike = random(15);
-    bg.ellipse(x, y, 5, 5);
-    line(x, y, x+spike, y);
-
-    bg.ellipse(width-x, y, 5, 5);
-    line(width-x, y, width-(x+spike), y);
-
-    bg.ellipse(width-x, height-y, 5, 5);
-    line(width-x, height-y, width-(x+spike), height-y);
-
-    bg.ellipse(x, height-y, 5, 5);
-    line(x, height-y, (x+spike), height-y);
   }
 
   public int getClosest(float point, ArrayList<Float> zeros) {
@@ -834,7 +935,7 @@ public class BackgroundPatterns extends Effect {
     size = sound[1].length;
 
     binSize = (indexRange[1]-indexRange[0])/PApplet.parseFloat(newSize);
-    lastThreadUpdate = millis();
+    lastThreadUpdate = time;
     bandAnalysisThread.start();
     name = type;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
@@ -845,7 +946,7 @@ public class BackgroundPatterns extends Effect {
   }   
 
   protected void stream(float[][] sound) {
-    //println("steam: " + millis());
+    //println("steam: " + time);
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[i].length; j++) {
         spec[i][j] = sound[i][j];
@@ -945,7 +1046,7 @@ public class BackgroundPatterns extends Effect {
 
         //------------
         //framelimiter
-        int timeToWait = 3 - (millis()-lastThreadUpdate); // set framerateLogic to -1 to not limit;
+        int timeToWait = 3 - (time-lastThreadUpdate); // set framerateLogic to -1 to not limit;
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
@@ -958,7 +1059,7 @@ public class BackgroundPatterns extends Effect {
             Thread.currentThread().interrupt();
           }
         }
-        lastThreadUpdate = millis();
+        lastThreadUpdate = time;
       }
     }
   }
@@ -984,7 +1085,7 @@ class BarsEffect extends Effect {
     float angle = TWO_PI / nbars;
     float a = 0;
     int bar_height = 5;
-    float ts = sin(millis()*.0002f);
+    float ts = sin(time*.0002f);
     float i_rad = 187-5*ts;
     float rot = ts;
 
@@ -1161,7 +1262,8 @@ public class ColorPicker {
   }
   
   public int setAlpha(int c, int a){
-   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24); 
+   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24);
+   colorMode(RGB);
    int t = color(red(c), green(c), blue(c), (max(min(a, 255),0)));
    return t;
   }
@@ -1474,7 +1576,7 @@ public class EqRing extends Effect {
     strokeWeight(1);
     int[] c = cp.getColors();
     int current = c[colorIndex];
-    float t = millis();
+    float t = time;
     float gmax = ap.gMaxIntensity;
     float s = sin((t)*.0002f);
 
@@ -1487,11 +1589,14 @@ public class EqRing extends Effect {
     if (sphereBars) {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
-    
-    if (ringDisplay && gmax > 45) {
+
+    if (ringDisplay){ //&& gmax > 45) {
       noFill();
+      
+      stroke(cp.setAlpha(gmax>45 ? floor(gmax*fakePI) : floor(gmax), current));
       triRing(_x, _y, nbars, i_rad, o_rot, false);
-    }
+    } 
+    
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
@@ -1548,55 +1653,58 @@ public class EqRing extends Effect {
   }
 
   public void waveForm(float x, float y, float h, float rx, float ry, float rz) {
-    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/10;
-      //additive
-      int[] c = cp.getColors();
-      int current = c[colorIndex];
+    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/7;
+    //additive
+    int[] c = cp.getColors();
+    int current = c[colorIndex];
 
-      pushMatrix();
-      translate(x, y);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      float max = spec[1][sorted[1][0]];
-      float hScale = h/max(max, 1);
-      PShape s = createShape();
-      s.beginShape();
-      s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
-      s.strokeWeight(1);
-      s.noFill();
-      s.beginShape();
-      s.curveVertex(0, 0);
-      float wScale = max((sorted[1][0]), 1);
+    pushMatrix();
+    translate(x, y);
+    rotateX(rx);
+    rotateY(ry);
+    rotateZ(rz);
+    float max = spec[1][sorted[1][0]];
+    float hScale = h/max(max, 1);
+    PShape s = createShape();
+    s.beginShape();
+    s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
+    s.strokeWeight(1);
+    s.noFill();
+    s.beginShape();
+    s.curveVertex(0, 0);
+    float wScale = width/777.7f;//max((sorted[1][0]), 1);
 
-      //float decider = random(100);
-      //if (decider < 33) {
-      //  //progresses through freqs based on time
-      //  wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
-      //} else if (decider < 80) {
-      //  //use loudest third
-        //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002)))+1), 1);
-      //} else {
-      //  //use mid third
-      //  wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
-      //}
-      float maxWaveH = 0;
-      for (float i = 0; i < width+wScale; i+= wScale) {
-        float adder = 0;
-        for (int j = 0; j < wDepth; j++) {
-          float jHz = hzMult * (sorted[1][j] * size + offset);
-          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
-        }
-        s.curveVertex(i/**wScale*/, adder/wDepth);
-        maxWaveH = max(maxWaveH, adder/wDepth);
+    //float decider = random(100);
+    //if (decider < 33) {
+    //  //progresses through freqs based on time
+    //  wScale = max((sorted[1][time%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
+    //} else if (decider < 80) {
+    //  //use loudest third
+    //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(time*.002)))+1), 1);
+    //} else {
+    //  //use mid third
+    //  wScale = max((sorted[1][wDepth /3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
+    //}
+    float maxWaveH = 0;
+    for (float i = 0; i < width+wScale; i+= wScale) {
+      float adder = 0;
+      for (int j = 0; j < wDepth; j++) {
+        float jHz = hzMult * (sorted[1][j] * size + offset);
+        adder += sin(.001f*i*jHz)*(spec[1][sorted[1][j]]*hScale);
       }
-      s.curveVertex(width, 0);
-      s.endShape();
-      if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
-        shape(s, 0, 0);
+
+      s.curveVertex(i/**wScale*/, adder/wDepth);
+      maxWaveH = max(maxWaveH, adder/wDepth);
+    }
+    s.curveVertex(width, 0);
+    s.endShape();
+    if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
+      if (maxWaveH > 128) {
+        s.scale(1, 128.0f/maxWaveH);
       }
-      popMatrix();
-    
+      shape(s, 0, 0);
+    }
+    popMatrix();
   }
 
 
@@ -1669,6 +1777,7 @@ public class EqRing extends Effect {
     endShape(CLOSE);
   }
 }
+
 public class InkBlot extends Effect {
 
   boolean mirrored = false;
@@ -1681,7 +1790,7 @@ public class InkBlot extends Effect {
   InkBlot(int size, int offset, float hzMult, String type, int h) {
     super("inkBlot", type, size, offset, hzMult, h);
     offset = cp.getIndex(type)*7000;
-    offset += millis()*PI;
+    offset += time*PI;
 
     shapeHist = new PShape[histSize];
     initShapeHist();
@@ -1734,7 +1843,7 @@ public class InkBlot extends Effect {
           smokeRing.strokeWeight(1);
           //smokeRing.fill(cp.getPrev(type));
           smokeRing.noFill();
-          float timeOffset = millis()*.002f;
+          float timeOffset = time*.002f;
           for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0f) {
             float noiseDist = spread*(1+.5f*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
             float _y = noiseDist*cos(i);
@@ -1755,7 +1864,7 @@ public class InkBlot extends Effect {
         for (float i = - spread; i < spread; i++) {
           for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
             float cutoff = .78f - bandMax/10000.0f;
-            float val = noise(j/fakePI + 6.9f*sin(millis()/77.7f + bandMax), i/fakePI + 93*sin(millis()/7000.0f), offset+millis()*.00142857f);
+            float val = noise(j/fakePI + 6.9f*sin(time/77.7f + bandMax), i/fakePI + 93*sin(time/7000.0f), offset+time*.00142857f);
             if (val > cutoff) {
               float ratio = 200.0f*val/cutoff;
               noStroke();
@@ -1765,6 +1874,7 @@ public class InkBlot extends Effect {
               //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0f-j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
               ellipse(width/2.0f+j, height/2.0f-i, ratio/10.0f, ratio/10.0f);
+            
               //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
               popMatrix();
             }
@@ -1775,13 +1885,12 @@ public class InkBlot extends Effect {
   }
 }
 //global toggleable variables
-
 boolean shpereBarsDupelicateMode = false;
 boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
 boolean lazerMode = true;
-float menu = millis();
+float menu = time;
 String[] specModes = {"off", "mirrored", "inkBlot"};
 String specDispMode = specModes[1];
 String[] waveTypes = {"full", "simple", "disabled"};
@@ -1807,7 +1916,7 @@ public void keyPressed() {
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
     } else if (keyCode == CONTROL) {
-      menu = millis();
+      menu = time;
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
@@ -1875,6 +1984,8 @@ public void keyPressed() {
     } else {
       println("sphereBars disabled");
     }
+  } else if (key == 'o') {
+    println("Trying to open a file");
   } else {
     println("unhandled key: " + key);
   }
@@ -1898,23 +2009,31 @@ public class Lazer extends Effect {
     if (lazerMode) {
       float tmax =  sortedHist[0][1][0]*30;
       noStroke();
+      pushMatrix();
+      
+      //translate(-width/2.0,height  /2.0, 0);
+      //rotateX(sin(time*.00002)*PI);
+      //translate(width/2.0,-height/2.0,0);
       fill(red(picked), green(picked), blue(picked), tmax/20);
-      int cBeams =  floor(beams + 3*noise(millis() * .002f));
+      int cBeams =  floor(beams + 3*noise(time * .002f));
       for (int i = 0; i < cBeams; i++) {
         pushMatrix();
         beginShape();
         vertex(0, 0, 0);
         vertex(0, tmax, 0);
-        vertex(tmax/15.0f+tmax*sin(millis()*.002f), tmax/(2+sin(millis()*.002f)), 0);
-        translate(width/2.0f, height/2.0f, 0);
-
-        rotateZ((i+sin(millis()*.0002f))*TWO_PI/cBeams);
+        vertex(tmax/15.0f+tmax*sin(time*.002f), tmax/(2+sin(time*.002f)), 0);
+        translate(width/2.0f, height/2.0f, fakePI);
+ 
+        rotateZ((i+sin(time*.0002f))*TWO_PI/cBeams);
         endShape(CLOSE);
         popMatrix();
       }
+      
+      popMatrix();
     }
   }
 }
+
 public class MirroredVerticalVis extends Effect {
 
   MirroredVerticalVis(int size, int offset, float hzMult, String type, int h) {
@@ -1980,7 +2099,7 @@ class SphereBars extends Effect {
   SphereBars(int size, int offset, float hzMult, String type, int h) {
     super("SphereBars visualizer", type, size, offset, hzMult, h);
 
-    lastLogicUpdate = millis();
+    lastLogicUpdate = time;
     nbars = size;
     histSize = h;
     init();
@@ -2014,15 +2133,15 @@ class SphereBars extends Effect {
     if (width != layers[0].width || height!= layers[0].height) {
       init();
     }
-    if (1000/logicRate - (millis()-lastLogicUpdate) <= 0) {
+    if (1000/logicRate - (time-lastLogicUpdate) <= 0) {
       shiftLayers();
       PGraphics pg = layers[0];
       pg.beginDraw();
-      pg.background(128-128*sin((millis()-lastLogicUpdate)*.01f*spec[1][maxIndex]),0);
+      pg.background(128-128*sin((time-lastLogicUpdate)*.01f*spec[1][maxIndex]),0);
       pg.sphereDetail(8);
       pg.rectMode(CENTER);
       int bar_height = 5;
-      float ts = sin(millis()*.0002f);
+      float ts = sin(time*.0002f);
       float i_rad = 187-5*ts;
       float rot = ts;
       pg.pushMatrix();
@@ -2075,7 +2194,7 @@ class SphereBars extends Effect {
       float angle = TWO_PI / (pl*reps);
       spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
       float a = 0;
-      float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(millis()));
+      float s = (i_rad*PI/(pl*reps))*.8f;//(.8+.2*sin(time));
       for (int i = 0; i < reps; i ++) {
         for (int pcount = lowIndex; pcount < highIndex; pcount++) {
           pg.pushMatrix();
@@ -2086,7 +2205,7 @@ class SphereBars extends Effect {
             r = (a+angle*(pl-pcount-1) + spokeAngle);
           }
 
-          for (float j = max(spec[1][pcount]*sin(millis()*.002f)+1, 0); j < spec[1][pcount]; ) {
+          for (float j = max(spec[1][pcount]*sin(time*.002f)+1, 0); j < spec[1][pcount]; ) {
             float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
             if (alph >= 0) {
 
@@ -2097,14 +2216,14 @@ class SphereBars extends Effect {
               float sz = angle*h;
               if (shpereBarsDupelicateMode) {
                 //dupes determines the number of copies of rings that will appear when active/
-                int dupes = 2+ceil(millis()*.002f%7)*2;
+                int dupes = 2+ceil(time*.002f%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
                   int qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0f);
                   pg.fill(qs);
                   pg.noStroke();
                   pg.pushMatrix();
-                  pg.rotateY(millis()*.002f + 4*dupe*TWO_PI/dupes);
-                  pg.rotateX(millis()*.002f + dupe*TWO_PI/dupes);
+                  pg.rotateY(time*.002f + 4*dupe*TWO_PI/dupes);
+                  pg.rotateX(time*.002f + dupe*TWO_PI/dupes);
                   pg.rotateZ(spokeAngle);
                   pg.translate(sx, sy, 0);
                   pg.sphere(sz);
@@ -2117,7 +2236,7 @@ class SphereBars extends Effect {
               pg.noStroke();
               pg.ellipse(sx, sy, sz, sz);
             }
-            j+= bar_height*(.6f + .1515f*sin(millis()*.002f));
+            j+= bar_height*(.6f + .1515f*sin(time*.002f));
           }
 
           pg.popMatrix();

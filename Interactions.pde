@@ -1,11 +1,10 @@
 //global toggleable variables
-
 boolean shpereBarsDupelicateMode = false;
 boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
 boolean lazerMode = true;
-float menu = millis();
+float menu = time;
 String[] specModes = {"off", "mirrored", "inkBlot"};
 String specDispMode = specModes[1];
 String[] waveTypes = {"full", "simple", "disabled"};
@@ -31,7 +30,7 @@ void keyPressed() {
     } else if (keyCode == DOWN) {
       println("DOWN arrow key");
     } else if (keyCode == CONTROL) {
-      menu = millis();
+      menu = time;
       println("ctrl key");
     } else {
       println("unhandled keyCode: " + keyCode);
@@ -99,6 +98,8 @@ void keyPressed() {
     } else {
       println("sphereBars disabled");
     }
+  } else if (key == 'o') {
+    println("Trying to open a file");
   } else {
     println("unhandled key: " + key);
   }

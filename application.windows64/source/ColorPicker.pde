@@ -140,7 +140,8 @@ public class ColorPicker {
   }
   
   public color setAlpha(color c, int a){
-   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24); 
+   //return (c & 0xFFFFFF) | (max(min(a, 255), 0) << 24);
+   colorMode(RGB);
    color t = color(red(c), green(c), blue(c), (max(min(a, 255),0)));
    return t;
   }

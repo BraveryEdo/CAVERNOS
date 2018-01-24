@@ -10,7 +10,7 @@ public class InkBlot extends Effect {
   InkBlot(int size, int offset, float hzMult, String type, int h) {
     super("inkBlot", type, size, offset, hzMult, h);
     offset = cp.getIndex(type)*7000;
-    offset += millis()*PI;
+    offset += time*PI;
 
     shapeHist = new PShape[histSize];
     initShapeHist();
@@ -63,7 +63,7 @@ public class InkBlot extends Effect {
           smokeRing.strokeWeight(1);
           //smokeRing.fill(cp.getPrev(type));
           smokeRing.noFill();
-          float timeOffset = millis()*.002;
+          float timeOffset = time*.002;
           for (float i = 0; i < TWO_PI; i+= TWO_PI/100.0) {
             float noiseDist = spread*(1+.5*noise(sin(i)-1, cos(i)+fakePI, timeOffset));
             float _y = noiseDist*cos(i);
@@ -84,7 +84,7 @@ public class InkBlot extends Effect {
         for (float i = - spread; i < spread; i++) {
           for (float j = 0; sq(j) + sq(i) < sq(spread); j++) {            
             float cutoff = .78 - bandMax/10000.0;
-            float val = noise(j/fakePI + 6.9*sin(millis()/77.7 + bandMax), i/fakePI + 93*sin(millis()/7000.0), offset+millis()*.00142857);
+            float val = noise(j/fakePI + 6.9*sin(time/77.7 + bandMax), i/fakePI + 93*sin(time/7000.0), offset+time*.00142857);
             if (val > cutoff) {
               float ratio = 200.0*val/cutoff;
               noStroke();
@@ -94,6 +94,7 @@ public class InkBlot extends Effect {
               //ellipse(width/2.0+j, height/2.0+i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0-j, height/2.0-i, ratio/10.0, ratio/10.0);
               ellipse(width/2.0+j, height/2.0-i, ratio/10.0, ratio/10.0);
+            
               //ellipse(width/2.0-j, height/2.0+i, ratio/10.0, ratio/10.0);
               popMatrix();
             }

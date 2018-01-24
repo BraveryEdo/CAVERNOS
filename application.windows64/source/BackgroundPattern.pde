@@ -1,20 +1,18 @@
 public class BackgroundPatterns extends Effect {
   PGraphics bg;
-
   //dots
   float[][] pointSizes;
   float[][] zPos;
   float avgBri;
   float dotsNoisescale = 0.025;    
   float dotsGridSize = 25;
-
   //snailTrail
-
   int numParticles = 1024;
   float[][] particles;
   float particleAvgX = 0;
+  float reactiveBri = 0;
   float avgXSpeed = MAX_FLOAT;
-  float lastSwitch = millis();
+  float lastSwitch = time;
   String[] autoModes;
   String localMode = particleModes[0];
   float snailNoisescale = 0.000142857;
@@ -102,18 +100,20 @@ public class BackgroundPatterns extends Effect {
     float gMax = ap.gMaxIntensity;
 
     bg.beginDraw();
-    bg.clear();
+    bg.clear(); 
 
     bg.colorMode(HSB);
     bg.noStroke();
     for (int y = 0; y < ceil((height/2.0)/dotsGridSize); y++) {
       for (int x = 0; x < ceil((width/2.0)/dotsGridSize); x++) {
-        float perl = (((sin(millis()*.002)+PI*abs(cos(millis()*.00002)*5))*noise(x*dotsNoisescale, y*dotsNoisescale, millis()*0.0002)%PI)-(PI/2))*160;
+        float perl = (((sin(time*.002)+PI*abs(cos(time*.00002)*5))*noise(x*dotsNoisescale, y*dotsNoisescale, time*0.0002)%PI)-(PI/2))*160;
 
-        float hue = (millis()*.02 + abs(perl)) %255;
-        float sat = 50*abs(cos(millis()*.02))+100*sin(millis()*.002)+16;
-        float bri = 240-abs(perl)+10*sin(millis()*.00002); 
-
+        float hue = (time*.02 + abs(perl)) %255;
+        float sat = 50*abs(cos(time*.02))+100*sin(time*.002)*gMax/100.0;
+        float bri = 200-abs(perl)+10*sin(time*.00002); 
+        reactiveBri = lerp(reactiveBri, min(bri, gMax*2.5), .33); 
+        
+        
         float radius = dotsGridSize-2;
 
         float bRad = 0;
@@ -121,22 +121,18 @@ public class BackgroundPatterns extends Effect {
         case 0:
         case 1:
           if (avgBri < fakePI * 30) {
-            bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
+            bRad = radius/2.0*((255.0/max(reactiveBri, fakePI*30))+1);
           } else if (avgBri < fakePI * 37) {
-            bRad = radius;
-          } else if (avgBri < fakePI * 44) {
-            bRad = radius*(max(bri, fakePI * 30)/240);
-          } else if (avgBri < fakePI * 47 && ap.gMaxIntensity > 66) { 
-            bRad = radius;
-          } else {
-            bRad = radius/2.0*((255/max(bri, fakePI * 30))+1);
-          }
+            bRad = reactiveBri;
+          } else {/* if(avgBri < fakePI * 44) {*/
+            bRad = radius*(reactiveBri/240.0);
+          } 
           break;
         case 2:
-          bRad = (255/max(bri, 100))*radius/2.0+radius/2.0;
+          bRad = (255/max(reactiveBri, 100))*radius/2.0+radius/2.0;
           break;
         case 4:
-          bRad = (max(bri, 22/7*30)/240)*radius;
+          bRad = (max(reactiveBri, 22/7*30)/240)*radius;
           break;
         case 3:
         case 5:
@@ -152,9 +148,9 @@ public class BackgroundPatterns extends Effect {
 
         tAvgBri  += bri;
 
-        bg.fill(hue, sat, bri);
+        bg.fill(hue, sat, reactiveBri);
 
-        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(millis()*.00002))*5+2), (height-y)*dotsNoisescale*7, millis()*dotsNoisescale*.03)*gMax : 0;
+        float zDisp = (BGDotPattern != 0 && gMax > 65) ? noise((width-x)*dotsNoisescale*(abs(sin(time*.00002))*5+2), (height-y)*dotsNoisescale*7, time*dotsNoisescale*.03)*gMax : 0;
         float zp = zPos[x][y];
         zp = lerp(zp, zDisp, .25);
         zDisp = zp;
@@ -202,7 +198,6 @@ public class BackgroundPatterns extends Effect {
     } else {
       localMode = "waveReactive";
     }
-    
   }
 
   void waveReactive() {
@@ -210,7 +205,7 @@ public class BackgroundPatterns extends Effect {
     //don't clear, already contains bg dots. just draw on top
     bg.colorMode(RGB);
 
-    float t = (millis()*.0000142857);
+    float t = (time*.0000142857);
 
     ArrayList<Float> zeros = new ArrayList<Float>();
 
@@ -281,7 +276,7 @@ public class BackgroundPatterns extends Effect {
     bg.colorMode(RGB);
 
 
-    float t = (millis()*.0000142857);
+    float t = (time*.0000142857);
     particleAvgX = 0;
     avgXSpeed = MAX_FLOAT;
     for (int n = 0; n < numParticles; n++) {
@@ -300,7 +295,6 @@ public class BackgroundPatterns extends Effect {
       float newY = oldY + 7*cos(perl);
 
       if (newX < -5) {
-        explodeLine(0, oldY);
         oldX = newX = width/2.0;//random(width/2.0);
         oldY = newY = random(height/2.0);
       } else if (newX > width/2.0) {
@@ -329,21 +323,6 @@ public class BackgroundPatterns extends Effect {
     }
     particleAvgX /= numParticles;
     bg.endDraw();
-  }
-
-  void explodeLine(float x, float y) {
-    float spike = random(15);
-    bg.ellipse(x, y, 5, 5);
-    line(x, y, x+spike, y);
-
-    bg.ellipse(width-x, y, 5, 5);
-    line(width-x, y, width-(x+spike), y);
-
-    bg.ellipse(width-x, height-y, 5, 5);
-    line(width-x, height-y, width-(x+spike), height-y);
-
-    bg.ellipse(x, height-y, 5, 5);
-    line(x, height-y, (x+spike), height-y);
   }
 
   int getClosest(float point, ArrayList<Float> zeros) {

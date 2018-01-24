@@ -8,7 +8,7 @@ class SphereBars extends Effect {
   SphereBars(int size, int offset, float hzMult, String type, int h) {
     super("SphereBars visualizer", type, size, offset, hzMult, h);
 
-    lastLogicUpdate = millis();
+    lastLogicUpdate = time;
     nbars = size;
     histSize = h;
     init();
@@ -42,15 +42,15 @@ class SphereBars extends Effect {
     if (width != layers[0].width || height!= layers[0].height) {
       init();
     }
-    if (1000/logicRate - (millis()-lastLogicUpdate) <= 0) {
+    if (1000/logicRate - (time-lastLogicUpdate) <= 0) {
       shiftLayers();
       PGraphics pg = layers[0];
       pg.beginDraw();
-      pg.background(128-128*sin((millis()-lastLogicUpdate)*.01*spec[1][maxIndex]),0);
+      pg.background(128-128*sin((time-lastLogicUpdate)*.01*spec[1][maxIndex]),0);
       pg.sphereDetail(8);
       pg.rectMode(CENTER);
       int bar_height = 5;
-      float ts = sin(millis()*.0002);
+      float ts = sin(time*.0002);
       float i_rad = 187-5*ts;
       float rot = ts;
       pg.pushMatrix();
@@ -103,7 +103,7 @@ class SphereBars extends Effect {
       float angle = TWO_PI / (pl*reps);
       spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
       float a = 0;
-      float s = (i_rad*PI/(pl*reps))*.8;//(.8+.2*sin(millis()));
+      float s = (i_rad*PI/(pl*reps))*.8;//(.8+.2*sin(time));
       for (int i = 0; i < reps; i ++) {
         for (int pcount = lowIndex; pcount < highIndex; pcount++) {
           pg.pushMatrix();
@@ -114,7 +114,7 @@ class SphereBars extends Effect {
             r = (a+angle*(pl-pcount-1) + spokeAngle);
           }
 
-          for (float j = max(spec[1][pcount]*sin(millis()*.002)+1, 0); j < spec[1][pcount]; ) {
+          for (float j = max(spec[1][pcount]*sin(time*.002)+1, 0); j < spec[1][pcount]; ) {
             float alph = lerp(alpha(bandColor), 0, (spec[1][pcount]-j)/max(spec[1][pcount], 1));
             if (alph >= 0) {
 
@@ -125,14 +125,14 @@ class SphereBars extends Effect {
               float sz = angle*h;
               if (shpereBarsDupelicateMode) {
                 //dupes determines the number of copies of rings that will appear when active/
-                int dupes = 2+ceil(millis()*.002%7)*2;
+                int dupes = 2+ceil(time*.002%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
                   color qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0);
                   pg.fill(qs);
                   pg.noStroke();
                   pg.pushMatrix();
-                  pg.rotateY(millis()*.002 + 4*dupe*TWO_PI/dupes);
-                  pg.rotateX(millis()*.002 + dupe*TWO_PI/dupes);
+                  pg.rotateY(time*.002 + 4*dupe*TWO_PI/dupes);
+                  pg.rotateX(time*.002 + dupe*TWO_PI/dupes);
                   pg.rotateZ(spokeAngle);
                   pg.translate(sx, sy, 0);
                   pg.sphere(sz);
@@ -145,7 +145,7 @@ class SphereBars extends Effect {
               pg.noStroke();
               pg.ellipse(sx, sy, sz, sz);
             }
-            j+= bar_height*(.6 + .1515*sin(millis()*.002));
+            j+= bar_height*(.6 + .1515*sin(time*.002));
           }
 
           pg.popMatrix();

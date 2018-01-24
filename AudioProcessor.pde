@@ -1,17 +1,17 @@
 public class AudioProcessor {
   //audio processing elements
-  Minim minim;
   AudioInput in;
   FFT rfft, lfft;
   Band sub, low, mid, upper, high, all;
   Band[] bands;
   String mostIntenseBand = "sub";
   float gMaxIntensity = 0;
+  float energy = 0;
 
   int logicRate, lastLogicUpdate;
   int sampleRate = 8192/4;
   int specSize = 2048;
-  float[][] magnitude;
+  float[][] magnitudesByFreq;
 
   ////ranges are based on a sample frequency of 8192 (2^13) 
   //float[] bottomLimit = {0, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -20,9 +20,6 @@ public class AudioProcessor {
   //ranges are based on a sample frequency of 8192/4 (2^9) 
   float[] bottomLimit = {0, sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32};
   float[] topLimit = {sampleRate/256, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/8};
-
-
-
 
   //float[] bottomLimit = {0, sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16};
   //float[] topLimit = {sampleRate/128, sampleRate/64, sampleRate/32, sampleRate/16, sampleRate/8};
@@ -37,6 +34,68 @@ public class AudioProcessor {
   int[] highRange = {floor(bottomLimit[4]*mult), floor(topLimit[4]*mult)};
   int[] allRange = {floor(bottomLimit[0]*mult), floor(topLimit[4]*mult)};
 
+  public AudioProcessor(File f) {
+    loading++;
+    //String[] exts = new String[] {".wav", ".aiff", ".au", ".snd", ".mp3"};
+
+
+    player = minim.loadFile(f.getAbsolutePath());
+
+    rfft = new FFT(player.bufferSize(), player.sampleRate());
+    lfft = new FFT(player.bufferSize(), player.sampleRate());
+
+    rfft.logAverages(22, 6);
+    lfft.logAverages(22, 6);
+
+    magnitudesByFreq = new float[channels][specSize];
+    initBands();
+    loading--;
+    println("audioProcessor started");
+  }
+
+  void createFrame() {
+
+    player.play(time);
+
+    //update audio buffer
+    rfft.forward(player.right);
+    lfft.forward(player.left);
+
+    float min = 999999;
+    float max = -999999;
+    float avg = 0;
+
+    for (int i = 0; i < specSize; i++) {
+      float left_bin = lfft.getBand(i);
+      float right_bin = rfft.getBand(i);
+      float  mix_bin = (left_bin+right_bin)/2.0;
+      magnitudesByFreq[0][i] = left_bin;
+      magnitudesByFreq[1][i] = mix_bin;
+      magnitudesByFreq[2][i] = right_bin;
+      min = min(min, min(mix_bin, min(left_bin, right_bin)));
+      max = max(max, max(mix_bin, max(left_bin, right_bin)));
+      avg += left_bin+mix_bin+right_bin;
+    }
+    avg /= (3* specSize);
+
+    scaleMag(min, max);
+
+    streamAll();
+
+    int maxInt = 1;
+    for (int i  = 1; i < bands.length-1; i++) {
+      if (bands[i].maxIntensity >  bands[maxInt].maxIntensity) {
+        maxInt = i;
+      }
+    }
+
+    mostIntenseBand = bands[maxInt].getName();
+    gMaxIntensity = bands[maxInt].maxIntensity;
+
+    display();
+  }
+
+
   public AudioProcessor(int lr) {
     //println("ranges");
     //for (int i = 0; i < bottomLimit.length; i++) {
@@ -45,7 +104,6 @@ public class AudioProcessor {
 
     logicRate = lr;
     loading++;
-    minim = new Minim(this);
     in = minim.getLineIn(Minim.STEREO, sampleRate);
 
     rfft = new FFT(in.bufferSize(), in.sampleRate());
@@ -55,65 +113,17 @@ public class AudioProcessor {
     lfft.logAverages(22, 6);
 
     //spectrum is divided into left, mix, and right channels
-    magnitude = new float[channels][specSize];
-    lastLogicUpdate = millis();
+    magnitudesByFreq = new float[channels][specSize];
+    lastLogicUpdate = time;
 
 
     //update audio buffer
     rfft.forward(in.right);
     lfft.forward(in.left);
 
-    float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-      Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-      Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
+    initBands();
 
-    float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-      Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-      Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
-
-    float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-      Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-      Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
-
-    float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-      Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-      Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
-
-    float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-      Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-      Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
-
-    int newSize = 64;                     
-    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
-    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
-    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
-    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
-
-    float[][] sub2 = specResize(subArr, newSize, subLast);
-    float[][] low2 = specResize(lowArr, newSize, lowLast);
-    float[][] mid2 = specResize(midArr, newSize, midLast);
-    float[][] upper2 = specResize(upperArr, newSize, upperLast);
-    float[][] high2 = specResize(highArr, newSize, null);
-    float[][] all2 = specResize(magnitude, newSize, null);
-
-    sub = new Band(sub2, hzMult, subRange, newSize, "sub");
-    low = new Band(low2, hzMult, lowRange, newSize, "low");
-    mid = new Band(mid2, hzMult, midRange, newSize, "mid");
-    upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
-    high = new Band(high2, hzMult, highRange, newSize, "high");
-    all = new Band(all2, hzMult, allRange, newSize, "all");
-
-    bands = new Band[6];
-    bands[0] = sub;
-    bands[1] = low;
-    bands[2] = mid;
-    bands[3] = upper;
-    bands[4] = high;
-    bands[5] = all;
-
-
-
-    logicThread.start();
+    liveLogicThread.start();
     println("audioProcessor started");
     loading--;
   }
@@ -138,7 +148,6 @@ public class AudioProcessor {
       c++;
     }
   }
-
 
 
 
@@ -208,11 +217,14 @@ public class AudioProcessor {
   }
 
 
-  Thread logicThread = new Thread(new Runnable() {
+  Thread liveLogicThread = new Thread(new Runnable() {
     public void run() {
-      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", logicThreadStarted");
+      System.out.println("AudioProcessor running on: " + Thread.currentThread().getName() + ", liveLogicThread Started");
 
       while (true) {
+
+        time = millis();
+
         //update audio buffer
         rfft.forward(in.right);
         lfft.forward(in.left);
@@ -220,83 +232,25 @@ public class AudioProcessor {
         float min = 999999;
         float max = -999999;
         float avg = 0;
-
+        float tEnergy = 0;
         for (int i = 0; i < specSize; i++) {
           float left_bin = lfft.getBand(i);
           float right_bin = rfft.getBand(i);
           float  mix_bin = (left_bin+right_bin)/2.0;
-          magnitude[0][i] = left_bin;
-          magnitude[1][i] = mix_bin;
-          magnitude[2][i] = right_bin;
+          magnitudesByFreq[0][i] = left_bin;
+          magnitudesByFreq[1][i] = mix_bin;
+          magnitudesByFreq[2][i] = right_bin;
           min = min(min, min(mix_bin, min(left_bin, right_bin)));
           max = max(max, max(mix_bin, max(left_bin, right_bin)));
           avg += left_bin+mix_bin+right_bin;
+          tEnergy += mix_bin*pow(i+1, -.5);
         }
         avg /= (3* specSize);
+        energy = tEnergy;
+        //println("Energy: " + energy);
+        scaleMag(min, max);
 
-
-        if (max > 100) {
-          //println(max);
-          for (int i = 0; i < specSize; i++) {
-            float scale = 100.0/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-          //} else if (max < 60 && avg > 10) {
-          //  for (int i = 0; i < specSize; i++) {
-          //    float scale = 100.0/(max-min);
-          //    for (int j = 0; j < magnitude.length; j++) {
-          //      magnitude[j][i] *= scale;
-          //    }
-          //  }
-        } else if ( max < 20 && max > 5) {
-          for (int i = 0; i < specSize; i++) {
-            float scale = 50.0/(max-min);
-            for (int j = 0; j < magnitude.length; j++) {
-              magnitude[j][i] *= scale;
-            }
-          }
-        }
-        float[][] subArr = {Arrays.copyOfRange(magnitude[0], subRange[0], subRange[1]), 
-          Arrays.copyOfRange(magnitude[1], subRange[0], subRange[1]), 
-          Arrays.copyOfRange(magnitude[2], subRange[0], subRange[1])};
-
-        float[][] lowArr = {Arrays.copyOfRange(magnitude[0], lowRange[0], lowRange[1]), 
-          Arrays.copyOfRange(magnitude[1], lowRange[0], lowRange[1]), 
-          Arrays.copyOfRange(magnitude[2], lowRange[0], lowRange[1])};
-
-        float[][] midArr = {Arrays.copyOfRange(magnitude[0], midRange[0], midRange[1]), 
-          Arrays.copyOfRange(magnitude[1], midRange[0], midRange[1]), 
-          Arrays.copyOfRange(magnitude[2], midRange[0], midRange[1])};
-
-        float[][] upperArr = {Arrays.copyOfRange(magnitude[0], upperRange[0], upperRange[1]), 
-          Arrays.copyOfRange(magnitude[1], upperRange[0], upperRange[1]), 
-          Arrays.copyOfRange(magnitude[2], upperRange[0], upperRange[1])};
-
-        float[][] highArr = {Arrays.copyOfRange(magnitude[0], highRange[0], highRange[1]), 
-          Arrays.copyOfRange(magnitude[1], highRange[0], highRange[1]), 
-          Arrays.copyOfRange(magnitude[2], highRange[0], highRange[1])};
-
-        int newSize = 64;
-        float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
-        float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
-        float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
-        float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
-
-        float[][] sub2 = specResize(subArr, newSize, subLast);
-        float[][] low2 = specResize(lowArr, newSize, lowLast);
-        float[][] mid2 = specResize(midArr, newSize, midLast);
-        float[][] upper2 = specResize(upperArr, newSize, upperLast);
-        float[][] high2 = specResize(highArr, newSize, null);   
-        float[][] all2 = specResize(magnitude, newSize, null);
-
-        sub.stream(sub2);
-        low.stream(low2);
-        mid.stream(mid2);
-        upper.stream(upper2);
-        high.stream(high2);
-        all.stream(all2);
+        streamAll();
 
         int maxInt = 1;
         for (int i  = 1; i < bands.length-1; i++) {
@@ -310,7 +264,7 @@ public class AudioProcessor {
 
         //------------
         //framelimiter
-        int timeToWait = 1000/logicRate - (millis()-lastLogicUpdate); // set framerateLogic to -1 to not limit;
+        int timeToWait = 1000/logicRate - (time-lastLogicUpdate); // set framerateLogic to -1 to not limit;
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
@@ -322,9 +276,127 @@ public class AudioProcessor {
             Thread.currentThread().interrupt();
           }
         }
-        lastLogicUpdate = millis();
+        lastLogicUpdate = time;
       }
     }
   }
   );
+
+  void initBands() {
+    float[][] subArr = {Arrays.copyOfRange(magnitudesByFreq[0], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], subRange[0], subRange[1])};
+
+    float[][] lowArr = {Arrays.copyOfRange(magnitudesByFreq[0], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], lowRange[0], lowRange[1])};
+
+    float[][] midArr = {Arrays.copyOfRange(magnitudesByFreq[0], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], midRange[0], midRange[1])};
+
+    float[][] upperArr = {Arrays.copyOfRange(magnitudesByFreq[0], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], upperRange[0], upperRange[1])};
+
+    float[][] highArr = {Arrays.copyOfRange(magnitudesByFreq[0], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], highRange[0], highRange[1])};
+
+    int newSize = 64;                     
+    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+    float[][] sub2 = specResize(subArr, newSize, subLast);
+    float[][] low2 = specResize(lowArr, newSize, lowLast);
+    float[][] mid2 = specResize(midArr, newSize, midLast);
+    float[][] upper2 = specResize(upperArr, newSize, upperLast);
+    float[][] high2 = specResize(highArr, newSize, null);
+    float[][] all2 = specResize(magnitudesByFreq, newSize, null);
+
+    sub = new Band(sub2, hzMult, subRange, newSize, "sub");
+    low = new Band(low2, hzMult, lowRange, newSize, "low");
+    mid = new Band(mid2, hzMult, midRange, newSize, "mid");
+    upper = new Band(upper2, hzMult, upperRange, newSize, "upper");
+    high = new Band(high2, hzMult, highRange, newSize, "high");
+    all = new Band(all2, hzMult, allRange, newSize, "all");
+
+    bands = new Band[6];
+    bands[0] = sub;
+    bands[1] = low;
+    bands[2] = mid;
+    bands[3] = upper;
+    bands[4] = high;
+    bands[5] = all;
+  }
+
+  void streamAll() {
+    float[][] subArr = {Arrays.copyOfRange(magnitudesByFreq[0], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], subRange[0], subRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], subRange[0], subRange[1])};
+
+    float[][] lowArr = {Arrays.copyOfRange(magnitudesByFreq[0], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], lowRange[0], lowRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], lowRange[0], lowRange[1])};
+
+    float[][] midArr = {Arrays.copyOfRange(magnitudesByFreq[0], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], midRange[0], midRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], midRange[0], midRange[1])};
+
+    float[][] upperArr = {Arrays.copyOfRange(magnitudesByFreq[0], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], upperRange[0], upperRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], upperRange[0], upperRange[1])};
+
+    float[][] highArr = {Arrays.copyOfRange(magnitudesByFreq[0], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[1], highRange[0], highRange[1]), 
+      Arrays.copyOfRange(magnitudesByFreq[2], highRange[0], highRange[1])};
+
+    int newSize = 64;
+    float[] subLast = {lowArr[0][0], lowArr[1][0], lowArr[2][0]};
+    float[] lowLast = {midArr[0][0], midArr[1][0], midArr[2][0]};
+    float[] midLast = {upperArr[0][0], upperArr[1][0], upperArr[2][0]};
+    float[] upperLast = {highArr[0][0], highArr[1][0], highArr[2][0]};
+
+    float[][] sub2 = specResize(subArr, newSize, subLast);
+    float[][] low2 = specResize(lowArr, newSize, lowLast);
+    float[][] mid2 = specResize(midArr, newSize, midLast);
+    float[][] upper2 = specResize(upperArr, newSize, upperLast);
+    float[][] high2 = specResize(highArr, newSize, null);   
+    float[][] all2 = specResize(magnitudesByFreq, newSize, null);
+
+    sub.stream(sub2);
+    low.stream(low2);
+    mid.stream(mid2);
+    upper.stream(upper2);
+    high.stream(high2);
+    all.stream(all2);
+  }
+
+  void scaleMag(float min, float max) {
+    if (max > 100) {
+      //println(max);
+      for (int i = 0; i < specSize; i++) {
+        float scale = 100.0/(max-min);
+        for (int j = 0; j < magnitudesByFreq.length; j++) {
+          magnitudesByFreq[j][i] *= scale;
+        }
+      }
+      //} else if (max < 60 && avg > 10) {
+      //  for (int i = 0; i < specSize; i++) {
+      //    float scale = 100.0/(max-min);
+      //    for (int j = 0; j < magnitude.length; j++) {
+      //      magnitude[j][i] *= scale;
+      //    }
+      //  }
+    } else if ( max < 20 && max > 5) {
+      for (int i = 0; i < specSize; i++) {
+        float scale = 50.0/(max-min);
+        for (int j = 0; j < magnitudesByFreq.length; j++) {
+          magnitudesByFreq[j][i] *= scale;
+        }
+      }
+    }
+  }
 }

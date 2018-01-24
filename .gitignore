@@ -49,3 +49,11 @@ Temporary Items
 #32 bit Cavernos
 
 application.windows32/
+
+#saved frames
+
+frames/
+
+#data folder
+
+data/

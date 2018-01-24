@@ -25,7 +25,7 @@ public class EqRing extends Effect {
     strokeWeight(1);
     color[] c = cp.getColors();
     color current = c[colorIndex];
-    float t = millis();
+    float t = time;
     float gmax = ap.gMaxIntensity;
     float s = sin((t)*.0002);
 
@@ -38,11 +38,14 @@ public class EqRing extends Effect {
     if (sphereBars) {
       subEffects[1].display(_x, _y, h, w, 0, 0, 0);
     }
-    
-    if (ringDisplay && gmax > 45) {
+
+    if (ringDisplay){ //&& gmax > 45) {
       noFill();
+      
+      stroke(cp.setAlpha(gmax>45 ? floor(gmax*fakePI) : floor(gmax), current));
       triRing(_x, _y, nbars, i_rad, o_rot, false);
-    }
+    } 
+    
     o_rad = last_rad + (o_rad-last_rad)/10;
     if (o_rad < last_rad) {
       o_rad+= 1;
@@ -99,55 +102,58 @@ public class EqRing extends Effect {
   }
 
   void waveForm(float x, float y, float h, float rx, float ry, float rz) {
-    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/10;
-      //additive
-      color[] c = cp.getColors();
-      color current = c[colorIndex];
+    int wDepth = (waveForm.equals("simple")) ? 1 : sorted[1].length/7;
+    //additive
+    color[] c = cp.getColors();
+    color current = c[colorIndex];
 
-      pushMatrix();
-      translate(x, y);
-      rotateX(rx);
-      rotateY(ry);
-      rotateZ(rz);
-      float max = spec[1][sorted[1][0]];
-      float hScale = h/max(max, 1);
-      PShape s = createShape();
-      s.beginShape();
-      s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
-      s.strokeWeight(1);
-      s.noFill();
-      s.beginShape();
-      s.curveVertex(0, 0);
-      float wScale = max((sorted[1][0]), 1);
+    pushMatrix();
+    translate(x, y);
+    rotateX(rx);
+    rotateY(ry);
+    rotateZ(rz);
+    float max = spec[1][sorted[1][0]];
+    float hScale = h/max(max, 1);
+    PShape s = createShape();
+    s.beginShape();
+    s.stroke(cp.getColors()[cp.getIndex(ap.mostIntenseBand)]);
+    s.strokeWeight(1);
+    s.noFill();
+    s.beginShape();
+    s.curveVertex(0, 0);
+    float wScale = width/777.7;//max((sorted[1][0]), 1);
 
-      //float decider = random(100);
-      //if (decider < 33) {
-      //  //progresses through freqs based on time
-      //  wScale = max((sorted[1][millis()%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
-      //} else if (decider < 80) {
-      //  //use loudest third
-        //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(millis()*.002)))+1), 1);
-      //} else {
-      //  //use mid third
-      //  wScale = max((sorted[1][wDepth/3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
-      //}
-      float maxWaveH = 0;
-      for (float i = 0; i < width+wScale; i+= wScale) {
-        float adder = 0;
-        for (int j = 0; j < wDepth; j++) {
-          float jHz = hzMult * (sorted[1][j] * size + offset);
-          adder += sin(i*wScale*jHz)*(spec[1][sorted[1][j]]*hScale);
-        }
-        s.curveVertex(i/**wScale*/, adder/wDepth);
-        maxWaveH = max(maxWaveH, adder/wDepth);
+    //float decider = random(100);
+    //if (decider < 33) {
+    //  //progresses through freqs based on time
+    //  wScale = max((sorted[1][time%(wDepth/2)/*floor(random(wDepth/2))*/])/(floor(random(20))+1), 1);
+    //} else if (decider < 80) {
+    //  //use loudest third
+    //wScale = max((sorted[1][floor(random(wDepth/3))])/(floor(random(4+2*sin(time*.002)))+1), 1);
+    //} else {
+    //  //use mid third
+    //  wScale = max((sorted[1][wDepth /3 + floor(random(wDepth/3))])/(floor(random(3))+1), 1);
+    //}
+    float maxWaveH = 0;
+    for (float i = 0; i < width+wScale; i+= wScale) {
+      float adder = 0;
+      for (int j = 0; j < wDepth; j++) {
+        float jHz = hzMult * (sorted[1][j] * size + offset);
+        adder += sin(.001*i*jHz)*(spec[1][sorted[1][j]]*hScale);
       }
-      s.curveVertex(width, 0);
-      s.endShape();
-      if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
-        shape(s, 0, 0);
+
+      s.curveVertex(i/**wScale*/, adder/wDepth);
+      maxWaveH = max(maxWaveH, adder/wDepth);
+    }
+    s.curveVertex(width, 0);
+    s.endShape();
+    if (maxWaveH > 5 && ap.gMaxIntensity > 5) {
+      if (maxWaveH > 128) {
+        s.scale(1, 128.0/maxWaveH);
       }
-      popMatrix();
-    
+      shape(s, 0, 0);
+    }
+    popMatrix();
   }
 
 

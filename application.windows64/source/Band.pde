@@ -38,7 +38,7 @@
     size = sound[1].length;
 
     binSize = (indexRange[1]-indexRange[0])/float(newSize);
-    lastThreadUpdate = millis();
+    lastThreadUpdate = time;
     bandAnalysisThread.start();
     name = type;
     effectManager = new EffectManager(name, histSize, size, numProperties, hzm, indexRange[0]);
@@ -49,7 +49,7 @@
   }   
 
   protected void stream(float[][] sound) {
-    //println("steam: " + millis());
+    //println("steam: " + time);
     for (int i = 0; i < channels; i++) {
       for (int j = 0; j < sound[i].length; j++) {
         spec[i][j] = sound[i][j];
@@ -149,7 +149,7 @@
 
         //------------
         //framelimiter
-        int timeToWait = 3 - (millis()-lastThreadUpdate); // set framerateLogic to -1 to not limit;
+        int timeToWait = 3 - (time-lastThreadUpdate); // set framerateLogic to -1 to not limit;
         if (timeToWait > 1) {
           try {
             //sleep long enough so we aren't faster than the logicFPS
@@ -162,7 +162,7 @@
             Thread.currentThread().interrupt();
           }
         }
-        lastThreadUpdate = millis();
+        lastThreadUpdate = time;
       }
     }
   }
