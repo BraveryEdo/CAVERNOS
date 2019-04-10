@@ -18,7 +18,7 @@ public class Lazer extends Effect {
       float tmax =  sortedHist[0][1][0]*30;
       noStroke();
       pushMatrix();
-      
+
       //translate(-width/2.0,height  /2.0, 0);
       //rotateX(sin(time*.00002)*PI);
       //translate(width/2.0,-height/2.0,0);
@@ -27,16 +27,16 @@ public class Lazer extends Effect {
       for (int i = 0; i < cBeams; i++) {
         pushMatrix();
         beginShape();
-        vertex(0, 0, 0);
-        vertex(0, tmax, 0);
-        vertex(tmax/15.0+tmax*sin(time*.002), tmax/(2+sin(time*.002)), 0);
+        vertex(0, 0, -2+cos(time*.0002)*4);
+        vertex(0, tmax, 1);
+        vertex(tmax/15.0+tmax*sin(time*.002)/fakePI, tmax/(2+sin(time*.002)), 0);
         translate(width/2.0, height/2.0, fakePI);
- 
+
         rotateZ((i+sin(time*.0002))*TWO_PI/cBeams);
         endShape(CLOSE);
         popMatrix();
       }
-      
+
       popMatrix();
     }
   }

@@ -103,6 +103,9 @@ public class EffectManager {
     case "inkBlot":
       e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;
+      case "off":
+      println("effect '" + e.name + "' for range type '" + e.type + "' hidden");
+      break;
     default:
       e = new InkBlot(size, offset, hzMult, effectName, histLen);
       break;

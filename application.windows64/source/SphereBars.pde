@@ -4,7 +4,7 @@ class SphereBars extends Effect {
   float spokeAngle = 0;
   int lastLogicUpdate;
   //0->h newest->oldest
-  PGraphics[] layers;
+  //PGraphics[] layers;
   SphereBars(int size, int offset, float hzMult, String type, int h) {
     super("SphereBars visualizer", type, size, offset, hzMult, h);
 
@@ -15,20 +15,20 @@ class SphereBars extends Effect {
   }
 
   void init() {
-    layers = new PGraphics[histSize];
-    PGraphics clear = createGraphics(width,height,P3D);
-    clear.beginDraw();
-    clear.clear();
-    clear.endDraw();
+    //layers = new PGraphics[histSize];
+    //PGraphics clear = createGraphics(width, height, P3D);
+    //clear.beginDraw();
+    //clear.clear();
+    //clear.endDraw();
     for (int i = 0; i < histSize; i++) {
-      layers[i] = clear;
+      //layers[i] = clear;
     }
   }
 
   void shiftLayers() {
-    for (int i = histSize-1; i > 0; i--) {
-      layers[i] = layers[i-1];
-    }
+    //for (int i = histSize-1; i > 0; i--) {
+    //  layers[i] = layers[i-1];
+    //}
   }
 
   void display(float left, float top, float right, float bottom) {
@@ -39,23 +39,23 @@ class SphereBars extends Effect {
   }
 
   void display(float x, float y, float h2, float w, float rx, float ry, float rz) {
-    if (width != layers[0].width || height!= layers[0].height) {
-      init();
-    }
-    if (1000/logicRate - (time-lastLogicUpdate) <= 0) {
-      shiftLayers();
-      PGraphics pg = layers[0];
-      pg.beginDraw();
-      pg.background(128-128*sin((time-lastLogicUpdate)*.01*spec[1][maxIndex]),0);
-      pg.sphereDetail(8);
-      pg.rectMode(CENTER);
+    //if (width != layers[0].width || height!= layers[0].height) {
+    //  init();
+    //}
+    //if (1000/logicRate - (time-lastLogicUpdate) <= 0) {
+    //  shiftLayers();
+    //  PGraphics pg = layers[0];
+      //pg.beginDraw();
+      //pg.background(128-128*sin((time-lastLogicUpdate)*.01*spec[1][maxIndex]), 0);
+      sphereDetail(8);
+      rectMode(CENTER);
       int bar_height = 5;
       float ts = sin(time*.0002);
       float i_rad = 187-5*ts;
       float rot = ts;
-      pg.pushMatrix();
-      pg.translate(x, y);
-      pg.rotate(rot);
+      pushMatrix();
+      translate(x, y);
+      rotate(rot);
       float diff = 3;
       int lowIndex = maxIndex, highIndex = maxIndex;
       for (int i = lowIndex; i > 0; i--) {
@@ -104,9 +104,9 @@ class SphereBars extends Effect {
       spokeAngle = (spokeAngle + angle*floor(random(reps/2)))%TWO_PI;
       float a = 0;
       float s = (i_rad*PI/(pl*reps))*.8;//(.8+.2*sin(time));
-      for (int i = 0; i < reps; i ++) {
+      for (int i = 0; i < (sphereBarsDupelicateMode? max(reps/5, 3)+2*sin(time*.002): reps); i ++) {
         for (int pcount = lowIndex; pcount < highIndex; pcount++) {
-          pg.pushMatrix();
+          pushMatrix();
           float r = 0;
           if (i%2 == 0) {
             r = (a+angle*pcount + spokeAngle);
@@ -119,47 +119,52 @@ class SphereBars extends Effect {
             if (alph >= 0) {
 
 
-              float h = (s+i_rad + (.5+j)*bar_height);
-              float sx = h*sin(r); 
-              float sy = h*cos(r);
-              float sz = angle*h;
-              if (shpereBarsDupelicateMode) {
+
+              if (sphereBarsDupelicateMode) {
                 //dupes determines the number of copies of rings that will appear when active/
                 int dupes = 2+ceil(time*.002%7)*2;
                 for (int dupe = 0; dupe < dupes; dupe++) { 
+                  float h = (s+i_rad-(i_rad/dupes*(dupe-1)) + (.5+j)*bar_height);
+                  float sx = h*sin(r); 
+                  float sy = h*cos(r);
+                  float sz = angle*h;
                   color qs = color(red(bandColor), green(bandColor), blue(bandColor), alph/2.0);
-                  pg.fill(qs);
-                  pg.noStroke();
-                  pg.pushMatrix();
-                  pg.rotateY(time*.002 + 4*dupe*TWO_PI/dupes);
-                  pg.rotateX(time*.002 + dupe*TWO_PI/dupes);
-                  pg.rotateZ(spokeAngle);
-                  pg.translate(sx, sy, 0);
-                  pg.sphere(sz);
-                  pg.popMatrix();
+                  fill(qs);
+                  noStroke();
+                  pushMatrix();
+                  rotateY(time*.002 + 4*dupe*TWO_PI/dupes);
+                  rotateX(time*.002 + dupe*TWO_PI/dupes);
+                  rotateZ(spokeAngle);
+                  translate(sx, sy, 0);
+                  sphere(sz);
+                  popMatrix();
                 }
+              } else {
+                float h = (s+i_rad + (.5+j)*bar_height);
+                float sx = h*sin(r); 
+                float sy = h*cos(r);
+                float sz = angle*h;
+                color q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
+                fill(q);
+                //pg.stroke(q);
+                noStroke();
+                ellipse(sx, sy, sz, sz);
               }
-              color q = color(red(bandColor), green(bandColor), blue(bandColor), alph);
-              pg.fill(q);
-              //pg.stroke(q);
-              pg.noStroke();
-              pg.ellipse(sx, sy, sz, sz);
             }
             j+= bar_height*(.6 + .1515*sin(time*.002));
           }
 
-          pg.popMatrix();
+          popMatrix();
         }
 
         a+= TWO_PI/float(reps);
       }
-      pg.popMatrix();
-      pg.endDraw();
-    }    
+      popMatrix();
+      //pg.endDraw();
+    //}    
 
-    for(int i = /*histSize-1*/0; i >= 0; i--){
-      image(layers[i], 0, 0);
-    }
-    
+//    for (int i = /*histSize-1*/0; i >= 0; i--) {
+//      image(layers[i], 0, 0);
+//    }
   }
 }

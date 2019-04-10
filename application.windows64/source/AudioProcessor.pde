@@ -63,7 +63,7 @@ public class AudioProcessor {
 
     float min = 999999;
     float max = -999999;
-    float avg = 0;
+    //float avg = 0;
 
     for (int i = 0; i < specSize; i++) {
       float left_bin = lfft.getBand(i);
@@ -74,9 +74,9 @@ public class AudioProcessor {
       magnitudesByFreq[2][i] = right_bin;
       min = min(min, min(mix_bin, min(left_bin, right_bin)));
       max = max(max, max(mix_bin, max(left_bin, right_bin)));
-      avg += left_bin+mix_bin+right_bin;
+      //avg += left_bin+mix_bin+right_bin;
     }
-    avg /= (3* specSize);
+    //avg /= (3* specSize);
 
     scaleMag(min, max);
 
@@ -133,7 +133,7 @@ public class AudioProcessor {
     for (Band b : bands) {
 
       if (b.name == "all") {
-        b .display(0, 0, width, height);
+        b.display(0, 0, width, height);
       } else if (specDispMode == "inkBlot") {
         b.display(0, 0, width, height);
       } else if (specDispMode == "mirrored") {
@@ -231,7 +231,7 @@ public class AudioProcessor {
 
         float min = 999999;
         float max = -999999;
-        float avg = 0;
+        //float avg = 0;
         float tEnergy = 0;
         for (int i = 0; i < specSize; i++) {
           float left_bin = lfft.getBand(i);
@@ -242,10 +242,10 @@ public class AudioProcessor {
           magnitudesByFreq[2][i] = right_bin;
           min = min(min, min(mix_bin, min(left_bin, right_bin)));
           max = max(max, max(mix_bin, max(left_bin, right_bin)));
-          avg += left_bin+mix_bin+right_bin;
+          //avg += left_bin+mix_bin+right_bin;
           tEnergy += mix_bin*pow(i+1, -.5);
         }
-        avg /= (3* specSize);
+        //avg /= (3* specSize);
         energy = tEnergy;
         //println("Energy: " + energy);
         scaleMag(min, max);

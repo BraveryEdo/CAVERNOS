@@ -27,7 +27,7 @@ void setup() {
   loading++;
   //size(1000, 700, P3D);
   fullScreen(P3D);
-  frameRate(30);
+  frameRate(60);
   noCursor();   
   rectMode(CORNERS);
   //colorpicker must be defined before audio processor!
@@ -100,7 +100,7 @@ void createFrame() {
   seconds -= minutes*60;
   minutes -= hours*60;
   String timeRemaining = hours + ":" + minutes + ":" + seconds;
-  println("Progress: " + String.format("%.2f",prog) + " - time remaining: " + timeRemaining);
+  println("Progress: " + String.format("%.2f", prog) + " - time remaining: " + timeRemaining);
 }
 
 void showStats() {
@@ -117,10 +117,16 @@ void showStats() {
     "specDispMode: " + specDispMode + "\n" +
     "lazerMode: " + lazerMode + "\n" +
     "waveForm: " + waveForm + "\n" +
-    "shpereBarsDupelicateMode: " + shpereBarsDupelicateMode + "\n" +
-    "snailMode: " + particleMode +"\n" + 
+    "sphereBarsDupelicateMode: " + sphereBarsDupelicateMode + "\n" +
+    "particleMode: " + particleMode +"\n" + 
     "BGDotPattern: " + BGDotPattern + ((BGDotPattern != 0) ? "(zDisp Active)": "") +" \n" + 
     "mostIntenseBand: " + ap.mostIntenseBand + "\n" + 
     "gMaxIntensity: " + ap.gMaxIntensity 
     , 50, 50);
+}
+
+void stop() {
+  player.close();
+  minim.stop();
+  super.stop();
 }

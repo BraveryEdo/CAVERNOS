@@ -121,7 +121,7 @@ public class EqRing extends Effect {
     s.noFill();
     s.beginShape();
     s.curveVertex(0, 0);
-    float wScale = width/777.7;//max((sorted[1][0]), 1);
+    float wScale = width/512;//max((sorted[1][0]), 1);
 
     //float decider = random(100);
     //if (decider < 33) {
@@ -139,7 +139,7 @@ public class EqRing extends Effect {
       float adder = 0;
       for (int j = 0; j < wDepth; j++) {
         float jHz = hzMult * (sorted[1][j] * size + offset);
-        adder += sin(.001*i*jHz)*(spec[1][sorted[1][j]]*hScale);
+        adder += sin(fakePI*.007*i*jHz)*(spec[1][sorted[1][j]]*hScale);
       }
 
       s.curveVertex(i/**wScale*/, adder/wDepth);

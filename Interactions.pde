@@ -1,5 +1,5 @@
 //global toggleable variables
-boolean shpereBarsDupelicateMode = false;
+boolean sphereBarsDupelicateMode = false;
 boolean sphereBars = true;
 boolean ringWave = false;
 boolean ringDisplay = true;
@@ -76,12 +76,12 @@ void keyPressed() {
     }
     ringDisplay = !ringDisplay;
   } else if (key == '6') {
-    if (shpereBarsDupelicateMode) {
+    if (sphereBarsDupelicateMode) {
       println("shpereBarsDupelicateMode disabled");
     } else {
       println("shpereBarsDupelicateMode enabled");
     }
-    shpereBarsDupelicateMode= !shpereBarsDupelicateMode;
+    sphereBarsDupelicateMode= !sphereBarsDupelicateMode;
   } else if (key == '7') {
     particleMode = particleModes[(Arrays.asList(particleModes).indexOf(particleMode)+1)%particleModes.length];
     if (particleMode == "disabled") { 
